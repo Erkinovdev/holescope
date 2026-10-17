@@ -563,4 +563,89 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get profileNoNick => 'Anonim haydovchi';
+
+  @override
+  String get noPotholesNearby => 'Yaqin atrofda chuqur topilmadi';
+
+  @override
+  String get reportThanks => 'Rahmat, belgi qabul qilindi';
+
+  @override
+  String get reportAlready => 'Bugun bu chuqurni allaqachon belgilagansiz';
+
+  @override
+  String get noConnection => 'Server bilan aloqa yo‘q';
+
+  @override
+  String get retry => 'Qayta urinish';
+
+  @override
+  String get streetsEmpty =>
+      'Hozircha ma’lumot kam: ko‘chalar bo‘ylab safarlar kerak';
+
+  @override
+  String get statusComplaintFiled => 'Shikoyat topshirilgan';
+
+  @override
+  String get searchNoResults => 'Hech narsa topilmadi';
+
+  @override
+  String get searchTitle => 'Ko‘cha yoki tuman';
+
+  @override
+  String get perKmUnit => 'chuqur/km';
+
+  @override
+  String get cityScoreEmpty => 'Shahar bo‘yicha ma’lumot yetarli emas';
+
+  @override
+  String get complaintTextPlaceholder => 'Shikoyat matni tayyorlanmoqda…';
+
+  @override
+  String stepFoundSub(int n, String when) {
+    return '$n haydovchi · $when';
+  }
+
+  @override
+  String get stepFiledNone => 'Hali topshirilmagan';
+
+  @override
+  String stepFiledVia(String channel, String number) {
+    return '$channel · №$number';
+  }
+
+  @override
+  String stepFiledPending(String channel) {
+    return '$channel · ro‘yxatdan o‘tishni kutmoqda';
+  }
+
+  @override
+  String get stepReviewWait => 'Javob kutilmoqda';
+
+  @override
+  String stepReviewDue(String date) {
+    return 'Javob $date gacha';
+  }
+
+  @override
+  String daysAgoShort(int n) {
+    return '$n kun oldin';
+  }
+
+  @override
+  String get today => 'bugun';
+
+  @override
+  String get recentTrips => 'So‘nggi safarlar';
+
+  @override
+  String get tripsEmpty => 'Hozircha safarlar yo‘q';
+
+  @override
+  String coverageKm(String km) {
+    return '$km km yo‘l o‘tilgan';
+  }
+
+  @override
+  String get daysUnit => 'kun';
 }

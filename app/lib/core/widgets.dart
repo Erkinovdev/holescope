@@ -445,7 +445,8 @@ class HpTabBar extends StatelessWidget {
                   onTap: () => onTap(i),
                   child: Column(spacing: 4, children: [
                     HpSvg(tabs[i].$1, size: 24, tint: i == index ? c.amberText : c.muted),
-                    Text(tabs[i].$2, style: HpText.s(i == index ? c.amberText : c.muted, 11, FontWeight.w500)),
+                    // фиксированная высота строки: запасные шрифты (узбекские ʻ, ‘) не должны раздувать вкладку
+                    Text(tabs[i].$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: HpText.s(i == index ? c.amberText : c.muted, 11, FontWeight.w500, h: 1.2)),
                   ]),
                 ),
               ),

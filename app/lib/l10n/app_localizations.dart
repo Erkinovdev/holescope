@@ -1123,6 +1123,150 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Анонимный водитель'**
   String get profileNoNick;
+
+  /// No description provided for @noPotholesNearby.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рядом ям не найдено'**
+  String get noPotholesNearby;
+
+  /// No description provided for @reportThanks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Спасибо, отметка принята'**
+  String get reportThanks;
+
+  /// No description provided for @reportAlready.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегодня вы уже отмечали эту яму'**
+  String get reportAlready;
+
+  /// No description provided for @noConnection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет связи с сервером'**
+  String get noConnection;
+
+  /// No description provided for @retry.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторить'**
+  String get retry;
+
+  /// No description provided for @streetsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока мало данных: нужны проезды по улицам'**
+  String get streetsEmpty;
+
+  /// No description provided for @statusComplaintFiled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Жалоба подана'**
+  String get statusComplaintFiled;
+
+  /// No description provided for @searchNoResults.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не найдено'**
+  String get searchNoResults;
+
+  /// No description provided for @searchTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Улица или район'**
+  String get searchTitle;
+
+  /// No description provided for @perKmUnit.
+  ///
+  /// In ru, this message translates to:
+  /// **'ям/км'**
+  String get perKmUnit;
+
+  /// No description provided for @cityScoreEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Недостаточно данных по городу'**
+  String get cityScoreEmpty;
+
+  /// No description provided for @complaintTextPlaceholder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готовим текст жалобы…'**
+  String get complaintTextPlaceholder;
+
+  /// No description provided for @stepFoundSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n} водителей · {when}'**
+  String stepFoundSub(int n, String when);
+
+  /// No description provided for @stepFiledNone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ещё не подана'**
+  String get stepFiledNone;
+
+  /// No description provided for @stepFiledVia.
+  ///
+  /// In ru, this message translates to:
+  /// **'{channel} · №{number}'**
+  String stepFiledVia(String channel, String number);
+
+  /// No description provided for @stepFiledPending.
+  ///
+  /// In ru, this message translates to:
+  /// **'{channel} · ждёт регистрации'**
+  String stepFiledPending(String channel);
+
+  /// No description provided for @stepReviewWait.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ожидаем ответ'**
+  String get stepReviewWait;
+
+  /// No description provided for @stepReviewDue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ответ до {date}'**
+  String stepReviewDue(String date);
+
+  /// No description provided for @daysAgoShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'{n, plural, one{{n} день назад} few{{n} дня назад} many{{n} дней назад} other{{n} дня назад}}'**
+  String daysAgoShort(int n);
+
+  /// No description provided for @today.
+  ///
+  /// In ru, this message translates to:
+  /// **'сегодня'**
+  String get today;
+
+  /// No description provided for @recentTrips.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последние поездки'**
+  String get recentTrips;
+
+  /// No description provided for @tripsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поездок пока нет'**
+  String get tripsEmpty;
+
+  /// No description provided for @coverageKm.
+  ///
+  /// In ru, this message translates to:
+  /// **'{km} км проездов'**
+  String coverageKm(String km);
+
+  /// No description provided for @daysUnit.
+  ///
+  /// In ru, this message translates to:
+  /// **'дн.'**
+  String get daysUnit;
 }
 
 class _AppLocalizationsDelegate

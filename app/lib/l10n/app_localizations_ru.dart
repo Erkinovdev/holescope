@@ -586,4 +586,96 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get profileNoNick => 'Анонимный водитель';
+
+  @override
+  String get noPotholesNearby => 'Рядом ям не найдено';
+
+  @override
+  String get reportThanks => 'Спасибо, отметка принята';
+
+  @override
+  String get reportAlready => 'Сегодня вы уже отмечали эту яму';
+
+  @override
+  String get noConnection => 'Нет связи с сервером';
+
+  @override
+  String get retry => 'Повторить';
+
+  @override
+  String get streetsEmpty => 'Пока мало данных: нужны проезды по улицам';
+
+  @override
+  String get statusComplaintFiled => 'Жалоба подана';
+
+  @override
+  String get searchNoResults => 'Ничего не найдено';
+
+  @override
+  String get searchTitle => 'Улица или район';
+
+  @override
+  String get perKmUnit => 'ям/км';
+
+  @override
+  String get cityScoreEmpty => 'Недостаточно данных по городу';
+
+  @override
+  String get complaintTextPlaceholder => 'Готовим текст жалобы…';
+
+  @override
+  String stepFoundSub(int n, String when) {
+    return '$n водителей · $when';
+  }
+
+  @override
+  String get stepFiledNone => 'Ещё не подана';
+
+  @override
+  String stepFiledVia(String channel, String number) {
+    return '$channel · №$number';
+  }
+
+  @override
+  String stepFiledPending(String channel) {
+    return '$channel · ждёт регистрации';
+  }
+
+  @override
+  String get stepReviewWait => 'Ожидаем ответ';
+
+  @override
+  String stepReviewDue(String date) {
+    return 'Ответ до $date';
+  }
+
+  @override
+  String daysAgoShort(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n дня назад',
+      many: '$n дней назад',
+      few: '$n дня назад',
+      one: '$n день назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get today => 'сегодня';
+
+  @override
+  String get recentTrips => 'Последние поездки';
+
+  @override
+  String get tripsEmpty => 'Поездок пока нет';
+
+  @override
+  String coverageKm(String km) {
+    return '$km км проездов';
+  }
+
+  @override
+  String get daysUnit => 'дн.';
 }

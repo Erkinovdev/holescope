@@ -73,6 +73,95 @@ class QuestionDto {
       );
 }
 
+class SegmentDto {
+  const SegmentDto(this.id, this.latA, this.lonA, this.latB, this.lonB, this.cls, this.roadClass, this.direction);
+  final int id, direction;
+  final double latA, lonA, latB, lonB;
+  final String cls, roadClass; // cls: A..E или пусто
+
+  factory SegmentDto.fromRow(List<dynamic> r) => SegmentDto(r[0] as int, (r[1] as num).toDouble(), (r[2] as num).toDouble(), (r[3] as num).toDouble(), (r[4] as num).toDouble(), r[5] as String, r[6] as String, r[7] as int);
+}
+
+class StreetRank {
+  const StreetRank(this.rank, this.road, this.name, this.coveredKm, this.potholes, this.perKm);
+  final int rank, potholes;
+  final String road, name;
+  final double coveredKm, perKm;
+}
+
+class DistrictScore {
+  const DistrictScore(this.code, this.name, this.score, this.segments);
+  final String code, name;
+  final double score;
+  final int segments;
+}
+
+class DistrictsReport {
+  const DistrictsReport(this.cityScore, this.districts);
+  final double? cityScore;
+  final List<DistrictScore> districts;
+}
+
+class WeeklyReport {
+  const WeeklyReport(this.found, this.fixed, this.complaints, this.drivers, this.km);
+  final int found, fixed, complaints, drivers;
+  final double km;
+}
+
+class ClusterDetail {
+  const ClusterDetail({required this.id, required this.lat, required this.lon, required this.level, required this.status, required this.devices, required this.passes, required this.firstSeen, required this.complaints, this.street, this.district, this.segment, this.safeSpeed});
+  final int id, devices, passes, complaints;
+  final double lat, lon;
+  final String level, status;
+  final DateTime firstSeen;
+  final String? street, district, segment;
+  final int? safeSpeed;
+
+  factory ClusterDetail.fromJson(Map<String, dynamic> j) => ClusterDetail(
+        id: j['id'] as int,
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
+        level: (j['level'] as String?) ?? '',
+        status: j['status'] as String,
+        devices: j['devices'] as int,
+        passes: j['passes'] as int,
+        firstSeen: DateTime.parse(j['first_seen'] as String),
+        complaints: j['complaints'] as int,
+        street: j['street'] as String?,
+        district: j['district'] as String?,
+        segment: j['segment'] as String?,
+        safeSpeed: (j['safe_speed'] as num?)?.toInt(),
+      );
+}
+
+class ComplaintDto {
+  const ComplaintDto({required this.id, required this.clusterId, required this.status, required this.text, required this.number, required this.steps});
+  final int id, clusterId;
+  final String status, text, number;
+  final List<Map<String, dynamic>> steps;
+
+  factory ComplaintDto.fromJson(Map<String, dynamic> j) => ComplaintDto(
+        id: j['id'] as int,
+        clusterId: j['cluster_id'] as int,
+        status: j['status'] as String,
+        text: j['text'] as String,
+        number: (j['number'] as String?) ?? '',
+        steps: [for (final s in j['steps'] as List) Map<String, dynamic>.from(s as Map)],
+      );
+}
+
+class SearchHit {
+  const SearchHit(this.type, this.name, this.lat, this.lon);
+  final String type, name;
+  final double lat, lon;
+}
+
+class MyStats {
+  const MyStats(this.found, this.confirmed, this.km, this.trips);
+  final int found, confirmed, trips;
+  final double km;
+}
+
 /// HTTP-клиент API v1 (backend/api). Заголовок авторизации — X-Device-Token (анонимный токен устройства).
 class ApiClient {
   ApiClient(String baseUrl, {this.token, Dio? dio})
@@ -130,4 +219,45 @@ class ApiClient {
         () => _dio.get('/api/v1/drive/ahead', queryParameters: {'lat': lat, 'lon': lon, 'heading': heading, 'dist': dist}),
         (d) => [for (final a in d['ahead'] as List) AheadWarning.fromJson(a as Map<String, dynamic>)],
       );
+
+  Future<List<SegmentDto>> mapSegments({required double minLat, required double minLon, required double maxLat, required double maxLon, bool scored = false, int limit = 4000}) => _run(
+        () => _dio.get('/api/v1/map/segments', queryParameters: {'bbox': '$minLat,$minLon,$maxLat,$maxLon', 'scored': scored ? 1 : 0, 'limit': limit}),
+        (d) => [for (final r in d['segments'] as List) SegmentDto.fromRow(r as List)],
+      );
+
+  Future<List<StreetRank>> rankingsStreets({String scope = 'city', String? district, int days = 30, int limit = 20}) => _run(
+        () => _dio.get('/api/v1/rankings/streets', queryParameters: {'scope': scope, if (district != null) 'district': district, 'days': days, 'limit': limit}),
+        (d) => [
+          for (final r in d['streets'] as List)
+            StreetRank(r['rank'] as int, r['road'] as String, r['name'] as String, (r['covered_km'] as num).toDouble(), r['potholes'] as int, (r['per_km'] as num).toDouble())
+        ],
+      );
+
+  Future<DistrictsReport> rankingsDistricts({int days = 30}) => _run(
+        () => _dio.get('/api/v1/rankings/districts', queryParameters: {'days': days}),
+        (d) => DistrictsReport((d['city_score'] as num?)?.toDouble(), [
+          for (final r in d['districts'] as List) DistrictScore(r['code'] as String, r['name'] as String, (r['score'] as num).toDouble(), r['segments'] as int)
+        ]),
+      );
+
+  Future<WeeklyReport> weekly({int days = 7}) => _run(
+        () => _dio.get('/api/v1/reports/weekly', queryParameters: {'days': days}),
+        (d) => WeeklyReport(d['found'] as int, d['fixed'] as int, d['complaints'] as int, d['drivers'] as int, (d['km'] as num).toDouble()),
+      );
+
+  Future<ClusterDetail> cluster(int id) => _run(() => _dio.get('/api/v1/clusters/$id'), (d) => ClusterDetail.fromJson(d as Map<String, dynamic>));
+
+  /// state: present | fixed
+  Future<void> reportCluster(int id, String state) => _run(() => _dio.post('/api/v1/clusters/$id/report', data: {'state': state}, options: _auth), (_) {});
+
+  Future<ComplaintDto> createComplaint(int clusterId) => _run(() => _dio.post('/api/v1/complaints', data: {'cluster_id': clusterId}, options: _auth), (d) => ComplaintDto.fromJson(d as Map<String, dynamic>));
+  Future<ComplaintDto> sendComplaint(int id) => _run(() => _dio.post('/api/v1/complaints/$id/send', options: _auth), (d) => ComplaintDto.fromJson(d as Map<String, dynamic>));
+  Future<ComplaintDto> complaint(int id) => _run(() => _dio.get('/api/v1/complaints/$id', options: _auth), (d) => ComplaintDto.fromJson(d as Map<String, dynamic>));
+
+  Future<List<SearchHit>> search(String q) => _run(
+        () => _dio.get('/api/v1/search', queryParameters: {'q': q}),
+        (d) => [for (final r in d['results'] as List) SearchHit(r['type'] as String, r['name'] as String, (r['lat'] as num).toDouble(), (r['lon'] as num).toDouble())],
+      );
+
+  Future<MyStats> myStats() => _run(() => _dio.get('/api/v1/me/stats', options: _auth), (d) => MyStats(d['found'] as int, d['confirmed'] as int, (d['km'] as num).toDouble(), d['trips'] as int));
 }

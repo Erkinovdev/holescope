@@ -6,7 +6,7 @@ import 'package:holescope/core/settings.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/core/widgets.dart';
 import 'package:holescope/features/screens_live.dart';
-import 'package:holescope/features/screens_main.dart';
+import 'package:holescope/features/screens_data.dart';
 import 'package:holescope/features/screens_more.dart';
 import 'package:holescope/features/screens_new.dart';
 import 'package:holescope/features/splash.dart';
@@ -35,11 +35,11 @@ GoRouter buildRouter({String initial = '/splash'}) => GoRouter(
         ),
         GoRoute(path: '/trips', builder: (_, __) => const TripsScreen()),
         GoRoute(path: '/my-map', builder: (_, __) => const MyMapScreen()),
-        GoRoute(path: '/pothole/:id', builder: (_, s) => PotholeScreen(id: s.pathParameters['id']!)),
+        GoRoute(path: '/pothole/:id', builder: (_, s) => PotholeScreen(id: int.tryParse(s.pathParameters['id']!) ?? 0)),
         GoRoute(path: '/warning', builder: (_, __) => const WarningScreen()),
         GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
-        GoRoute(path: '/complaint', builder: (_, __) => const ComplaintScreen()),
-        GoRoute(path: '/complaint/status', builder: (_, __) => const ComplaintStatusScreen()),
+        GoRoute(path: '/complaint/:cid', builder: (_, s) => ComplaintScreen(clusterId: int.tryParse(s.pathParameters['cid']!) ?? 0)),
+        GoRoute(path: '/complaint/status/:id', builder: (_, s) => ComplaintStatusScreen(id: int.tryParse(s.pathParameters['id']!) ?? 0)),
         GoRoute(path: '/route', builder: (_, __) => const RouteChoiceScreen()),
         GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         GoRoute(path: '/city', builder: (_, __) => const CityDashboardScreen()),

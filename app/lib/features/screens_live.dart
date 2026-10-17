@@ -11,6 +11,7 @@ import 'package:holescope/core/widgets.dart';
 import 'package:holescope/l10n/app_localizations.dart';
 import 'package:holescope/services/ahead_warner.dart';
 import 'package:holescope/services/api_client.dart';
+import 'package:holescope/services/data_providers.dart';
 import 'package:holescope/services/permissions.dart';
 import 'package:holescope/services/providers.dart';
 import 'package:holescope/services/trip_recorder.dart';
@@ -436,7 +437,7 @@ class ProfileScreen extends ConsumerWidget {
       ]),
       Row(spacing: 10, children: [
         stat('${tot.potholes}', l.statFound),
-        stat('—', l.statConfirmed), // TODO(этап 3): число подтверждений придёт с сервера
+        stat(ref.watch(myStatsProvider).value?.confirmed.toString() ?? '—', l.statConfirmed),
         stat(fmtKm(tot.km), l.statKm),
       ]),
       HpListItem(tone: Tone.amber, title: l.myFinds, subtitle: l.myFindsSub(tot.potholes), onTap: () => context.push('/my-map')),
@@ -523,8 +524,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Text('DEBUG · экраны', style: HpText.s(c.amberText, 12, FontWeight.w600, ls: 1.44)),
           for (final r in const [
-            ('/splash', 'Загрузка'), ('/permissions', 'Разрешения'), ('/warning', 'Предупреждение'), ('/complaint', 'Жалоба'),
-            ('/complaint/status', 'Статус жалобы'), ('/route', 'Выбор маршрута'), ('/notifications', 'Уведомления'), ('/city', 'Дашборд города'),
+            ('/splash', 'Загрузка'), ('/permissions', 'Разрешения'), ('/warning', 'Предупреждение'), ('/complaint/1', 'Жалоба'),
+            ('/complaint/status/1', 'Статус жалобы'), ('/route', 'Выбор маршрута'), ('/notifications', 'Уведомления'), ('/city', 'Дашборд города'),
             ('/challenges', 'Челленджи'), ('/weekly', 'Отчёт недели'), ('/question', 'Вопрос'), ('/trip-summary', 'Итоги поездки'),
           ])
             HpNavRow(label: r.$2, onTap: () => context.push(r.$1)),

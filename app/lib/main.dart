@@ -14,6 +14,7 @@ Future<void> main() async {
   final dir = await getApplicationSupportDirectory();
   final db = LocalDb.open(p.join(dir.path, 'holescope.db'));
   runApp(ProviderScope(
+    retry: (_, __) => null, // ошибки сети показываем сразу («нет связи» + кнопка «Повторить»), без скрытых повторов
     overrides: [
       prefsProvider.overrideWithValue(prefs),
       dbProvider.overrideWithValue(db),
