@@ -1,0 +1,11 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Symbol">
+<path id="Ellipse" d="M47.06 26C47.06 37.6311 37.6311 47.06 26 47.06C14.3689 47.06 4.94 37.6311 4.94 26C4.94 14.3689 14.3689 4.94 26 4.94C37.6311 4.94 47.06 14.3689 47.06 26Z" stroke-width="3.64" stroke="#FFB020"/>
+<rect id="Rectangle" x="24.18" width="3.64" height="11.44" rx="1.82" fill="#FFB020"/>
+<rect id="Rectangle_2" x="24.18" y="40.56" width="3.64" height="11.44" rx="1.82" fill="#FFB020"/>
+<rect id="Rectangle_3" y="24.18" width="11.44" height="3.64" rx="1.82" fill="#FFB020"/>
+<rect id="Rectangle_4" x="40.56" y="24.18" width="11.44" height="3.64" rx="1.82" fill="#FFB020"/>
+<ellipse id="Ellipse_2" cx="26" cy="26" rx="11.96" ry="7.02" fill="#FFB020"/>
+<ellipse id="Ellipse_3" cx="26" cy="27.3" rx="7.8" ry="3.9" fill="#151922"/>
+</g>
+</svg>

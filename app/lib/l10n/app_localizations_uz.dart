@@ -1,0 +1,488 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Uzbek (`uz`).
+class AppLocalizationsUz extends AppLocalizations {
+  AppLocalizationsUz([String locale = 'uz']) : super(locale);
+
+  @override
+  String get appName => 'Holescope';
+
+  @override
+  String get tagline => 'See every hole before you hit it.';
+
+  @override
+  String get tabMap => 'Xarita';
+
+  @override
+  String get tabDrive => 'Safar';
+
+  @override
+  String get tabStreets => 'Ko‘chalar';
+
+  @override
+  String get tabProfile => 'Profil';
+
+  @override
+  String get newBadge => 'NEW';
+
+  @override
+  String get permLead =>
+      'Datchiklar va geolokatsiyaga ruxsat bering — telefon chuqurni sezadi, siz esa uni xaritada ko‘rasiz.';
+
+  @override
+  String get permMotionTitle => 'Harakat va yo‘nalish';
+
+  @override
+  String get permMotionSub => 'Osma tizimiga zarbani aniqlaymiz';
+
+  @override
+  String get permLocTitle => 'Geolokatsiya «doim»';
+
+  @override
+  String get permLocSub => 'Fonda yozish';
+
+  @override
+  String get permNotifTitle => 'Bildirishnomalar';
+
+  @override
+  String get permNotifSub => 'Faqat chuqurlar haqida ogohlantirish';
+
+  @override
+  String get permCta => 'Ruxsat berish va boshlash';
+
+  @override
+  String get driveRecording => 'Yozish ketmoqda · ekranni qulflash mumkin';
+
+  @override
+  String get driveIdle => 'Yozish yo‘q';
+
+  @override
+  String get kmh => 'km/soat';
+
+  @override
+  String get driveFound => 'Topilgan chuqurlar';
+
+  @override
+  String get driveDistance => 'Bosib o‘tilgan';
+
+  @override
+  String kmValue(String value) {
+    return '$value km';
+  }
+
+  @override
+  String mValue(String value) {
+    return '$value m';
+  }
+
+  @override
+  String get driveStop => 'Safarni to‘xtatish';
+
+  @override
+  String get driveStart => 'Safarni boshlash';
+
+  @override
+  String get myFindsToday => 'Bugungi topilmalarim';
+
+  @override
+  String get searchHint => 'Ko‘cha yoki tumanni qidirish';
+
+  @override
+  String get levelLight => 'Kichik chuqur';
+
+  @override
+  String get levelMid => 'O‘rtacha chuqur';
+
+  @override
+  String get levelDeep => 'Chuqur o‘ra';
+
+  @override
+  String get levelDeepShort => 'Chuqur';
+
+  @override
+  String detectedDaysAgo(int n) {
+    return '$n kun oldin aniqlangan';
+  }
+
+  @override
+  String driversCount(int n) {
+    return '×$n haydovchi';
+  }
+
+  @override
+  String get confirmedLabel => 'Tasdiqlagan';
+
+  @override
+  String driversN(int n) {
+    return '$n haydovchi';
+  }
+
+  @override
+  String get statusLabel => 'Holati';
+
+  @override
+  String get statusOpen => 'Ochiq';
+
+  @override
+  String get complaintsFiled => 'Shikoyatlar soni';
+
+  @override
+  String get distanceLabel => 'Masofa';
+
+  @override
+  String get potholeStillThere => 'Chuqur joyida';
+
+  @override
+  String get potholeFixed => 'Ta’mirlangan';
+
+  @override
+  String get profileAnon => 'Anonim profil · raqam va pochtasiz';
+
+  @override
+  String get statFound => 'Topilgan';
+
+  @override
+  String get statConfirmed => 'Tasdiq.';
+
+  @override
+  String get statKm => 'Km';
+
+  @override
+  String get myFinds => 'Topilmalarim';
+
+  @override
+  String myFindsSub(int n) {
+    return 'Xaritada $n ta chuqur';
+  }
+
+  @override
+  String get settingsTitle => 'Sozlamalar';
+
+  @override
+  String get settingsSub => 'Til, ovoz, mashina';
+
+  @override
+  String get warnAhead => 'Oldinda chuqur';
+
+  @override
+  String get metersWord => 'metr';
+
+  @override
+  String get warnSlowDown => 'Tezlikni pasaytiring';
+
+  @override
+  String get warnDeepRight => 'Chuqur o‘ra, o‘ng qatorda';
+
+  @override
+  String get speedLabel => 'Tezlik';
+
+  @override
+  String get muteSound => 'Ovozni o‘chirish';
+
+  @override
+  String get unmuteSound => 'Ovozni yoqish';
+
+  @override
+  String get setVoice => 'Ovozli ogohlantirishlar';
+
+  @override
+  String get setBeep => 'Ovozli signal';
+
+  @override
+  String setWarnDistance(int m) {
+    return '$m m oldin ogohlantirish';
+  }
+
+  @override
+  String setSensitivity(String v) {
+    return 'Sezgirlik: $v';
+  }
+
+  @override
+  String get sensLow => 'past';
+
+  @override
+  String get sensMid => 'o‘rtacha';
+
+  @override
+  String get sensHigh => 'yuqori';
+
+  @override
+  String setCarMount(String car, String mount) {
+    return '$car · $mount';
+  }
+
+  @override
+  String get setHint =>
+      'Mashina profili va telefon joylashuvi chuqurlarni aniqroq topishga yordam beradi.';
+
+  @override
+  String get setLanguage => 'Til';
+
+  @override
+  String get setTheme => 'Mavzu';
+
+  @override
+  String get themeSystem => 'Tizim';
+
+  @override
+  String get themeDark => 'Qorong‘i';
+
+  @override
+  String get themeLight => 'Yorug‘';
+
+  @override
+  String get langSystem => 'Tizim tili';
+
+  @override
+  String get setReduceMotion => 'Animatsiyani kamaytirish';
+
+  @override
+  String get complaintTitle => 'Bir bosishda shikoyat';
+
+  @override
+  String get complaintSub => 'Matn va koordinatalar avtomatik tayyorlandi';
+
+  @override
+  String get draft => 'Qoralama';
+
+  @override
+  String complaintDraftText(String street, int n, int days) {
+    return '$street manzilida chuqur o‘ra aniqlandi. $days kun ichida $n haydovchi tasdiqladi. Koordinatalar va datchik ma’lumotlari ilova qilingan.';
+  }
+
+  @override
+  String get photo => 'Rasm';
+
+  @override
+  String get optional => 'Majburiy emas';
+
+  @override
+  String get anonymous => 'Anonim';
+
+  @override
+  String get yes => 'Ha';
+
+  @override
+  String get complaintSend => 'Shikoyat yuborish';
+
+  @override
+  String get streetsTitle => 'Eng yomon ko‘chalar';
+
+  @override
+  String get streetsSub => '30 kunda har kilometrdagi chuqurlar';
+
+  @override
+  String get segCity => 'Shahar';
+
+  @override
+  String get segDistrict => 'Tuman';
+
+  @override
+  String get statusChainTitle => 'Topdik → Topshirdik → Tuzatdik';
+
+  @override
+  String get stepFound => 'Topdik';
+
+  @override
+  String get stepFiled => 'Topshirdik';
+
+  @override
+  String get stepReview => 'Ko‘rib chiqilmoqda';
+
+  @override
+  String get stepFixed => 'Tuzatdik';
+
+  @override
+  String get stepFixedWait => 'Haydovchilar tasdig‘i kutilmoqda';
+
+  @override
+  String get shareChain => 'Zanjirni ulashish';
+
+  @override
+  String get routeTitle => 'Yo‘l sifati bo‘yicha marshrut';
+
+  @override
+  String get routeFast => 'Tezkor';
+
+  @override
+  String get routeSmooth => 'Tekis';
+
+  @override
+  String get routeGo => 'Tekis yo‘ldan borish';
+
+  @override
+  String get notifTitle => 'Bildirishnomalar';
+
+  @override
+  String cityQuality(String month) {
+    return 'Yo‘llar sifati · $month';
+  }
+
+  @override
+  String get challengesTitle => 'Chellenjlar';
+
+  @override
+  String get challengesSub => 'Haydovchilar hamjihatligi';
+
+  @override
+  String get topDrivers => 'Eng yaxshi haydovchilar';
+
+  @override
+  String get confirmationsWord => 'tasdiq';
+
+  @override
+  String get weeklyReport => 'Haftalik hisobot';
+
+  @override
+  String get weeklyFound => 'topilgan';
+
+  @override
+  String get weeklyComplaints => 'shikoyat';
+
+  @override
+  String get vehicleTitle => 'Mening mashinam';
+
+  @override
+  String get vehicleModel => 'Model';
+
+  @override
+  String get vehicleWheelbase => 'G‘ildirak bazasi';
+
+  @override
+  String get vehicleTires => 'Shinalar';
+
+  @override
+  String get vehiclePressure => 'Bosim';
+
+  @override
+  String get vehicleSuspension => 'Osma tizimi';
+
+  @override
+  String get vehicleSuspensionNote =>
+      'Osma tizimi sinfi safarlar ma’lumotidan hisoblanadi, hozircha aniqlanmagan.';
+
+  @override
+  String get vehicleNotSet => 'Ko‘rsatilmagan';
+
+  @override
+  String get vehicleUnverified => 'Xususiyatlar tasdiqlanmagan';
+
+  @override
+  String get vehicleSave => 'Saqlash';
+
+  @override
+  String get vehicleSoftness => 'Yumshoqlik indeksi';
+
+  @override
+  String get vehicleSoftnessEmpty =>
+      'Ma’lumot yetarli emas: safarlar va boshqa mashinalar bilan solishtirish kerak.';
+
+  @override
+  String get questionTitle => 'Bu nima edi?';
+
+  @override
+  String get questionSub =>
+      'To‘xtagandan keyin javob bering — bu Holescope’ni o‘rgatadi';
+
+  @override
+  String get optPotholeLight => 'Kichik chuqur';
+
+  @override
+  String get optPotholeMid => 'O‘rtacha chuqur';
+
+  @override
+  String get optPotholeDeep => 'Chuqur o‘ra';
+
+  @override
+  String get optBump => 'Tezlikni pasaytirgich';
+
+  @override
+  String get optManhole => 'Lyuk';
+
+  @override
+  String get optRail => 'Rels';
+
+  @override
+  String get optNothing => 'Hech narsa';
+
+  @override
+  String get optNotSure => 'Bilmayman';
+
+  @override
+  String get tripSummary => 'Safar yakunlari';
+
+  @override
+  String get tripKm => 'Kilometr';
+
+  @override
+  String get tripPotholes => 'Chuqurlar';
+
+  @override
+  String get tripPerKm => 'Km ga chuqur';
+
+  @override
+  String get tripWorst => 'Eng yomon uchastka';
+
+  @override
+  String get tripRoughness => 'Tekislik';
+
+  @override
+  String get tripDone => 'Tayyor';
+
+  @override
+  String get mountTitle => 'Telefon qayerda turibdi?';
+
+  @override
+  String get mountSeat => 'O‘rindiqda';
+
+  @override
+  String get mountCupholder => 'Stakan ushlagichda';
+
+  @override
+  String get mountHolder => 'Ushlagichda';
+
+  @override
+  String get mountSub => 'Datchiklar sezgirligi shunga bog‘liq';
+
+  @override
+  String get roleTitle => 'Sizning rolingiz';
+
+  @override
+  String get roleDriver => 'Haydovchi';
+
+  @override
+  String get roleDriverSub => 'O‘z mashinamni boshqaraman';
+
+  @override
+  String get rolePassenger => 'Yo‘lovchi';
+
+  @override
+  String get rolePassengerSub => 'Taksi yoki begona mashina';
+
+  @override
+  String get demoBanner => 'Demo ma’lumotlar: server hali ulanmagan';
+
+  @override
+  String get cancel => 'Bekor qilish';
+
+  @override
+  String get todoBackend => 'TODO: ma’lumot serverdan keladi';
+
+  @override
+  String weeklyFixedTitle(int n) {
+    return '$n ta chuqur';
+  }
+
+  @override
+  String weeklyFixedSub(int n) {
+    return 'Toshkent haydovchilari sharofati bilan ta’mirlandi';
+  }
+
+  @override
+  String get monthOctober => 'oktabr';
+}
