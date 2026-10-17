@@ -62,7 +62,7 @@ def train(min_labels: int = MIN_LABELS) -> TrainingRun:
     from sklearn.model_selection import GroupKFold
     X, y, raw, g, rule = collect()
     run = TrainingRun(n_labels=len(y))
-    trips = {k: int((g == k).sum()) for k in set(g)}
+    trips = {str(k): int((g == k).sum()) for k in set(g)}
     big = [k for k, n in trips.items() if n >= MIN_PER_TRIP]
     info = dict(n_labels=int(len(y)), trips=trips, positives=int(y.sum()), negatives=int((1 - y).sum()))
     if len(y) < min_labels or y.sum() < 10 or (1 - y).sum() < 10:

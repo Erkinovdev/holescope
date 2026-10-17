@@ -10,6 +10,8 @@ import '../algo/pipeline.dart';
 import '../algo/trip_state.dart';
 import 'config.dart';
 import 'csv_writer.dart';
+import 'package:uuid/uuid.dart';
+
 import 'local_db.dart';
 import 'samples.dart';
 
@@ -323,6 +325,7 @@ class TripRecorder {
     final (mode, modeConf) = classifyMode(speedsKmh, _stopsPerKm(speedsKmh, res.distanceKm));
     final potholes = trimmed.events.where((e) => e.type == 'pothole').length;
     final payload = tripPayload(trimmed, startedAt: startedAt, startReason: 'auto', endReason: end.reason, mode: mode, modeConf: modeConf);
+    payload['client_id'] = const Uuid().v4(); // повторная отправка не создаст дубль на сервере
     if (ctx.role == 'passenger') {
       payload['suspension'] = <String, dynamic>{}; // подвеска не считается, пока машина не определена
       payload['damping'] = <String, dynamic>{};

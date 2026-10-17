@@ -16,7 +16,8 @@ def load_csv(path) -> tuple[pd.DataFrame, dict]:
             if "=" in body:
                 k, v = body.split("=", 1)
                 meta[k.strip()] = v.strip()
-    df = pd.read_csv(path, skiprows=skip, dtype={"type": "category", "label": "string", "note": "string"})
+    wanted = ["type", "t_ms", "lat", "lon", "gps_acc_m", "speed_ms", "heading_deg", "ax", "ay", "az", "rx", "ry", "rz", "label"]
+    df = pd.read_csv(path, skiprows=skip, usecols=lambda c: c in wanted, dtype={"type": "category", "label": "string"})
     if df.empty:
         raise ValueError("пустой файл")
     t0 = df["t_ms"].min()
