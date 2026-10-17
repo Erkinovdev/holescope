@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Holescope — сбор данных</title>
+  <meta name="theme-color" content="#0f1115">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Запись акселерометра, гироскопа и GPS во время поездки для карты ям.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Holescope">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Holescope · сбор данных</h1>
+    <span class="ver" id="ver"></span>
+  </header>
+
+  <div id="banner" class="banner" role="alert" hidden></div>
+
+  <main>
+    <section class="card live" aria-label="Состояние записи">
+      <div class="speed">
+        <span class="speed-num" id="speed">—</span>
+        <span class="speed-unit">км/ч</span>
+      </div>
+      <div class="live-side">
+        <div class="timer" id="timer">0:00</div>
+        <div class="counts">
+          <span>Отметок: <b id="nMarks">0</b></span>
+          <span>Авто: <b id="nAuto">0</b></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="chips" aria-label="Датчики">
+      <span class="chip" id="chipGps">GPS: —</span>
+      <span class="chip" id="chipMotion">Датчик: —</span>
+      <span class="chip" id="chipWake">Экран: —</span>
+    </section>
+
+    <section class="card graph-card" aria-label="График вертикальных толчков">
+      <canvas id="graph" height="140"></canvas>
+      <div class="graph-cap">Вертикальные толчки, последние 6 секунд. Пунктир — порог автоопределения.</div>
+    </section>
+
+    <section class="lastmark" id="lastMark" aria-live="polite">Отметок пока нет</section>
+
+    <button id="startBtn" class="primary" type="button">Начать запись</button>
+
+    <p class="safety">Не нажимайте кнопки за рулём. Отмечает пассажир, либо едьте без отметок — авто-кандидаты запишутся сами, а ямы потом найдём по графику.</p>
+
+    <details class="card settings">
+      <summary>Настройки записи</summary>
+      <label>Автомобиль
+        <input id="car" type="text" placeholder="Например: Geely Geometry E" autocomplete="off">
+      </label>
+      <label>Где лежит телефон
+        <select id="mount">
+          <option value="holder">В держателе</option>
+          <option value="dash">На панели / торпедо</option>
+          <option value="seat">На сиденье</option>
+          <option value="pocket">В кармане</option>
+          <option value="other">Другое</option>
+        </select>
+      </label>
+      <label>Порог автоопределения: <b id="thrVal">5.0</b> м/с²
+        <input id="thr" type="range" min="2" max="15" step="0.5" value="5">
+      </label>
+      <label class="inline"><input id="sound" type="checkbox" checked> Звук при отметке и авто-кандидате</label>
+    </details>
+
+    <section class="sessions" aria-label="Записи">
+      <h2>Записи</h2>
+      <div id="sessions"></div>
+    </section>
+  </main>
+
+  <nav class="markbar" id="markbar" aria-label="Отметки">
+    <button type="button" class="mk mk-main" data-label="pothole" disabled>Яма</button>
+    <button type="button" class="mk" data-label="manhole" disabled>Люк</button>
+    <button type="button" class="mk" data-label="bump" disabled>Лежачий</button>
+    <button type="button" class="mk" data-label="rail" disabled>Рельсы / стык</button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>

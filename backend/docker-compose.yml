@@ -1,0 +1,33 @@
+# PostGIS-образ: геометрию в моделях пока не используем (lat/lon + индексы), но БД сразу готова к миграции на PostGIS.
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: ${PG_NAME:-holescope}
+      POSTGRES_USER: ${PG_USER:-holescope}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?задайте PG_PASSWORD в .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-holescope} -d ${PG_NAME:-holescope}"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    env_file: .env
+    environment:
+      PG_HOST: db
+      PG_NAME: ${PG_NAME:-holescope}
+      PG_USER: ${PG_USER:-holescope}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - media:/app/media
+
+volumes:
+  pgdata:
+  media:

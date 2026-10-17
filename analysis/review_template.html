@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Holescope — разбор поездки</title>
+<style>
+:root{--bg:#0b0d12;--surf:#151922;--raised:#1d222d;--line:#2a3040;--text:#f2f4f8;--muted:#8f99ab;--amber:#ffb020;--red:#ff5d5d;--green:#3ecf8e;--blue:#4da3ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 Inter,system-ui,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+h1{font-size:18px;margin:0;letter-spacing:-.02em}h1 b{color:var(--amber)}
+.prog{color:var(--muted);font-size:14px}.bar{height:6px;background:var(--raised);border-radius:3px;width:200px;overflow:hidden}.bar i{display:block;height:100%;background:var(--amber)}
+main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;padding:20px 24px;max-width:1300px;margin:auto}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:20px;padding:16px}
+canvas{width:100%;display:block;border-radius:12px;background:var(--bg)}
+.info{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.chip{background:var(--raised);border-radius:999px;padding:5px 12px;font-size:13px}.chip b{color:var(--amber)}
+.tag{color:var(--bg);background:var(--amber);font-weight:700}
+.btns{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+button{font:inherit;color:var(--text);background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer;text-align:left}
+button:hover{border-color:var(--amber)}button.on{border-color:var(--amber);background:#3a2c0f}
+button kbd{background:var(--bg);border-radius:6px;padding:1px 7px;margin-right:8px;color:var(--muted)}
+.nav{display:flex;gap:8px;margin-top:12px}.nav button{flex:1;text-align:center}
+.small{color:var(--muted);font-size:13px}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+a.dl{display:inline-block;margin-left:auto;background:var(--amber);color:#0b0d12;font-weight:700;padding:10px 16px;border-radius:12px;text-decoration:none}
+</style></head><body>
+<header><h1>Hole<b>scope</b> · разбор поездки</h1><span class="prog" id="prog"></span><div class="bar"><i id="barfill"></i></div>
+<a class="dl" href="#" id="dl">Скачать разметку</a></header>
+<main>
+<section class="card"><canvas id="wave" width="900" height="300"></canvas>
+<div class="info" id="info"></div>
+<div class="btns" id="btns"></div>
+<div class="nav"><button id="prev">← Назад</button><button id="skip">Пропустить (пробел)</button><button id="next">Вперёд →</button></div>
+<p class="small">Клавиши: 1–8 — выбрать метку, 0 — снять, ← → — листать, пробел — следующий без метки. Разметка сохраняется в браузере автоматически.</p></section>
+<section class="card"><canvas id="map" width="560" height="560"></canvas>
+<div class="legend" id="legend"></div>
+<p class="small" id="mapnote"></p></section>
+</main>
+<script>
+const D=__DATA__;
+const KEY="holescope-review:"+D.file;
+const LAB=[["pothole_light","Яма лёгкая","1","#ffb020"],["pothole_mid","Яма средняя","2","#ff8a3d"],["pothole_deep","Яма глубокая","3","#ff5d5d"],["manhole","Люк","4","#4da3ff"],["bump","Лежачий","5","#3ecf8e"],["rail","Стык / рельсы","6","#c28bff"],["noise","Не яма (шум)","7","#8f99ab"],["handled","Трогал телефон","8","#8f99ab"]];
+const MARKRU={pothole:"яма",manhole:"люк",bump:"лежачий",rail:"стык"};
+let labels={};try{labels=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
+const E=D.events;let idx=0;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(labels))}catch(e){}};
+const $=id=>document.getElementById(id);
+const fmt=t=>Math.floor(t/60)+":"+String(Math.floor(t%60)).padStart(2,"0");
+const lvlCol=["#3ecf8e","#8fd36b","#ffb020","#ff5d5d"];
+// карта
+const route=D.route,segs=D.segs;let b={a:1e9,z:-1e9,c:1e9,d:-1e9};
+for(const p of route){b.a=Math.min(b.a,p[0]);b.z=Math.max(b.z,p[0]);b.c=Math.min(b.c,p[1]);b.d=Math.max(b.d,p[1])}
+const mc=$("map"),mx=mc.getContext("2d");const kx=Math.cos((b.a+b.z)/2*Math.PI/180);
+const sc=Math.min((mc.width-40)/((b.d-b.c)*kx||1),(mc.height-40)/((b.z-b.a)||1));
+const px=(la,lo)=>[20+(lo-b.c)*kx*sc,mc.height-20-(la-b.a)*sc];
+function drawMap(){mx.clearRect(0,0,mc.width,mc.height);mx.fillStyle="#0b0d12";mx.fillRect(0,0,mc.width,mc.height);
+ mx.lineCap="round";mx.lineWidth=2;mx.strokeStyle="#2a3040";mx.beginPath();route.forEach((p,i)=>{const q=px(p[0],p[1]);i?mx.lineTo(q[0],q[1]):mx.moveTo(q[0],q[1])});mx.stroke();
+ mx.lineWidth=4;for(const s of segs){const p=px(s.a[0],s.a[1]),q=px(s.b[0],s.b[1]);mx.strokeStyle=lvlCol[s.lvl];mx.beginPath();mx.moveTo(p[0],p[1]);mx.lineTo(q[0],q[1]);mx.stroke()}
+ E.forEach((e,i)=>{const q=px(e.lat,e.lon);const l=labels[e.id];const c=l?(LAB.find(x=>x[0]===l.label)||[0,0,0,"#fff"])[3]:"#f2f4f8";mx.fillStyle=c;mx.beginPath();mx.arc(q[0],q[1],l?4:2.5,0,7);mx.fill()});
+ const e=E[idx];if(e){const q=px(e.lat,e.lon);mx.strokeStyle="#fff";mx.lineWidth=2;mx.beginPath();mx.arc(q[0],q[1],11,0,7);mx.stroke()}}
+$("legend").innerHTML=D.lvl.map((n,i)=>`<span><i style="background:${lvlCol[i]}"></i>${n}</span>`).join("")+`<span><i style="background:#f2f4f8"></i>толчок</span>`;
+$("mapnote").textContent="Цвет маршрута — ровность дороги по участкам 50 м (считается по тряске с поправкой на скорость). Белая окружность — выбранный толчок.";
+// волна
+const wc=$("wave"),wx=wc.getContext("2d");
+function drawWave(){const e=E[idx];wx.clearRect(0,0,wc.width,wc.height);wx.fillStyle="#0b0d12";wx.fillRect(0,0,wc.width,wc.height);if(!e)return;
+ const W=wc.width,H=wc.height,pad=30,n=e.wave.length;const ymax=Math.max(6,Math.abs(e.peak)*1.15);
+ const X=i=>pad+(W-2*pad)*i/(n-1),Y=v=>H/2-(v/ymax)*(H/2-pad);
+ wx.strokeStyle="#2a3040";wx.lineWidth=1;wx.beginPath();wx.moveTo(pad,H/2);wx.lineTo(W-pad,H/2);wx.stroke();
+ wx.fillStyle="#8f99ab";wx.font="12px sans-serif";wx.fillText("м/с²",4,14);wx.fillText("±"+ymax.toFixed(0),4,Y(ymax)+4);
+ wx.setLineDash([5,5]);wx.strokeStyle="#ffb02088";[e.thr,-e.thr].forEach(v=>{wx.beginPath();wx.moveTo(pad,Y(v));wx.lineTo(W-pad,Y(v));wx.stroke()});wx.setLineDash([]);
+ const i0=Math.round(-e.wt0/4*(n-1)*1.0);const cx=X(Math.max(0,Math.min(n-1,Math.round((-e.wt0)/(n>1?(4/(n-1)):1)))));
+ wx.strokeStyle="#ff5d5d";wx.lineWidth=1.5;wx.beginPath();wx.moveTo(cx,pad/2);wx.lineTo(cx,H-pad/2);wx.stroke();
+ wx.strokeStyle="#ffb020";wx.lineWidth=1.4;wx.beginPath();e.wave.forEach((v,i)=>{i?wx.lineTo(X(i),Y(v)):wx.moveTo(X(i),Y(v))});wx.stroke();
+ wx.fillStyle="#8f99ab";[-2,-1,0,1,2].forEach(s=>wx.fillText(s+" с",pad+(W-2*pad)*(s+2)/4-10,H-8))}
+// карточка
+function render(){const e=E[idx];$("prog").textContent=`Событие ${idx+1} из ${E.length} · размечено ${Object.keys(labels).length}`;
+ $("barfill").style.width=(E.length?100*Object.keys(labels).length/E.length:0)+"%";
+ if(!e){$("info").innerHTML="<span class='chip'>Событий не найдено</span>";return}
+ const src=[];if(e.src.includes("mark"))src.push(`<span class="chip tag">ваша отметка: ${MARKRU[e.mark]||e.mark}</span>`);if(e.src.includes("app"))src.push(`<span class="chip tag">авто-кандидат приложения</span>`);if(!src.length)src.push(`<span class="chip">новое: без отметки</span>`);
+ $("info").innerHTML=src.join("")+`<span class="chip">время <b>${fmt(e.t)}</b></span><span class="chip">скорость <b>${e.speed}</b> км/ч</span><span class="chip">пик <b>${e.peak}</b> м/с²</span><span class="chip">шум вокруг <b>${e.noise}</b> (×${e.ratio})</span><span class="chip">длит. ${e.dur} мс</span><span class="chip">второй удар ${Math.round(e.pair*100)}%</span><span class="chip">первым: ${e.first>0?"вверх":"вниз"}</span>`;
+ const cur=labels[e.id]?labels[e.id].label:null;
+ $("btns").innerHTML=LAB.map(l=>`<button data-l="${l[0]}" class="${cur===l[0]?"on":""}"><kbd>${l[2]}</kbd><span style="color:${l[3]}">●</span> ${l[1]}</button>`).join("");
+ $("btns").querySelectorAll("button").forEach(b=>b.onclick=()=>setLabel(b.dataset.l));
+ drawWave();drawMap()}
+function setLabel(l){const e=E[idx];if(!e)return;if(l==null)delete labels[e.id];else labels[e.id]={label:l};save();if(l!=null&&idx<E.length-1)idx++;render()}
+const go=d=>{idx=Math.max(0,Math.min(E.length-1,idx+d));render()};
+$("prev").onclick=()=>go(-1);$("next").onclick=()=>go(1);
+const nextFree=()=>{for(let k=1;k<=E.length;k++){const j=(idx+k)%E.length;if(!labels[E[j].id]){idx=j;break}}render()};
+$("skip").onclick=nextFree;
+addEventListener("keydown",ev=>{if(ev.key==="ArrowRight")go(1);else if(ev.key==="ArrowLeft")go(-1);else if(ev.key===" "){ev.preventDefault();nextFree()}else if(ev.key==="0")setLabel(null);else{const l=LAB.find(x=>x[2]===ev.key);if(l)setLabel(l[0])}});
+$("dl").onclick=ev=>{ev.preventDefault();const out={file:D.file,created:new Date().toISOString(),labels:E.filter(e=>labels[e.id]).map(e=>({id:e.id,label:labels[e.id].label,t:e.t,lat:e.lat,lon:e.lon,speed:e.speed,peak:e.peak,noise:e.noise,ratio:e.ratio,dur:e.dur,pair:e.pair,first:e.first,energy:e.energy,pos:e.pos,neg:e.neg,src:e.src,mark:e.mark}))};
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,1)],{type:"application/json"}));a.download="labels_"+D.file.replace(/\.csv$/,"")+".json";a.click()};
+// клик по карте — ближайший толчок
+mc.onclick=ev=>{const r=mc.getBoundingClientRect(),x=(ev.clientX-r.left)*mc.width/r.width,y=(ev.clientY-r.top)*mc.height/r.height;let best=-1,bd=1e9;E.forEach((e,i)=>{const q=px(e.lat,e.lon),d=(q[0]-x)**2+(q[1]-y)**2;if(d<bd){bd=d;best=i}});if(best>=0&&bd<900){idx=best;render()}};
+render();
+</script></body></html>
