@@ -5,3 +5,4 @@ scikit-learn
 gunicorn
 psycopg[binary]
 whitenoise
+osmium

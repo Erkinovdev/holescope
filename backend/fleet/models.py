@@ -79,6 +79,7 @@ class Device(models.Model):
     calib_gain = models.FloatField(default=1.0)
     calib_n = models.PositiveIntegerField(default=0)
     trust = models.FloatField(default=0.5)                          # доверие 0..1 (подтверждения, антиспам)
+    blocked = models.BooleanField(default=False)                    # антиспам: данные не принимаются
     last_seen = models.DateTimeField(null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
 

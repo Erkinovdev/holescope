@@ -24,5 +24,5 @@ class Command(BaseCommand):
                        start_reason="manual", events=r["events"], damping=r["damping"], suspension=r["suspension"],
                        segments=[dict(lat_a=x.lat_a, lon_a=x.lon_a, lat_b=x.lat_b, lon_b=x.lon_b, speed_kmh=x.speed_kmh, ri=x.ri, cls=x.cls, t0=x.t0)
                                  for x in seg.itertuples()] if len(seg) else [])
-        trip = ingest_trip(dev, payload)
+        trip = ingest_trip(dev, payload, validate=False)
         self.stdout.write(f"trip {trip.pk}: событий {trip.events.count()}, кластеров {trip.events.values('cluster').distinct().count()}")

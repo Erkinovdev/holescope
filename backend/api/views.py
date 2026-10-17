@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from fleet.models import Device, Vehicle, CarModel
 from telemetry.models import Trip, RoadEvent, EventCluster, RawUpload
 from brain.models import Question, Label, BrainSnapshot, AlgoVersion
-from brain import services
+from brain import services, road_stats, validation
 from .auth import device_required, staff_required, body
 
 NICK_A = ["Тихий", "Быстрый", "Ночной", "Ясный", "Смелый", "Зоркий"]
@@ -58,9 +58,17 @@ def upload_trip(request):
     payload = body(request)
     if "started_at" not in payload:
         return JsonResponse({"error": "started_at required"}, status=400)
-    trip = services.ingest_trip(request.device, payload)
+    try:
+        trip = services.ingest_trip(request.device, payload)
+    except validation.Rejected as e:
+        validation.adjust_trust(request.device, False)
+        return JsonResponse({"error": e.reason}, status=e.status)
+    except (KeyError, ValueError, TypeError) as e:
+        validation.adjust_trust(request.device, False)
+        return JsonResponse({"error": f"bad payload: {e}"}, status=400)
     qs = Question.objects.filter(device=request.device, status="open", event__trip=trip).count()
-    return JsonResponse({"trip_id": trip.pk, "events": trip.events.count(), "questions": qs}, status=201)
+    return JsonResponse({"trip_id": trip.pk, "events": trip.events.count(), "questions": qs, "duplicate": bool(getattr(trip, "duplicate", False))},
+                        status=200 if getattr(trip, "duplicate", False) else 201)
 
 
 @csrf_exempt
@@ -98,6 +106,8 @@ def question_answer(request, qid):
         Label.objects.create(event=e, source="driver", label="noise" if a == "nothing" else a, features=e.features, trip_key=str(e.trip_id))
         if a == "nothing" and e.cluster and e.cluster.passes <= 1:
             e.cluster.status = "false"; e.cluster.save()
+        elif e.cluster and a != "nothing":
+            road_stats.refine_cluster_type(e.cluster, a)
         request.device.trust = min(1.0, request.device.trust + 0.01); request.device.save(update_fields=["trust"])
     return JsonResponse({"ok": True})
 

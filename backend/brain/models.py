@@ -61,3 +61,18 @@ class BrainSnapshot(models.Model):
     recall = models.FloatField(null=True, blank=True)
     segments_scored = models.PositiveIntegerField(default=0)
     data = models.JSONField(default=dict, blank=True)
+
+
+class ModelAward(models.Model):
+    """«Самая мягкая машина недели/месяца/года» (заготовка): медиана softness_score на модель, ≥10 машин и ≥500 км на модель."""
+    PERIODS = [("week", "неделя"), ("month", "месяц"), ("year", "год")]
+    period = models.CharField(max_length=6, choices=PERIODS)
+    day = models.DateField()
+    car_model = models.ForeignKey("fleet.CarModel", on_delete=models.CASCADE, related_name="awards")
+    softness_median = models.FloatField()
+    n_vehicles = models.PositiveIntegerField()
+    km_total = models.FloatField()
+    rank = models.PositiveSmallIntegerField(default=1)
+
+    class Meta:
+        unique_together = ("period", "day", "car_model")

@@ -21,10 +21,12 @@ class Trip(models.Model):
     algo_version = models.CharField(max_length=12, blank=True)
     app_version = models.CharField(max_length=20, blank=True)
     summary = models.JSONField(default=dict, blank=True)            # ровность, подвеска, числа
+    client_id = models.CharField(max_length=64, blank=True, default="")   # идемпотентность повторной отправки с телефона
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-started_at"]
+        constraints = [models.UniqueConstraint(fields=["device", "client_id"], condition=~models.Q(client_id=""), name="uniq_trip_client")]
 
 
 class RawUpload(models.Model):
@@ -59,6 +61,9 @@ class EventCluster(models.Model):
     confidence = models.FloatField(default=0.0)
     first_seen = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(auto_now=True)
+    last_hit = models.DateTimeField(null=True, blank=True)          # время последнего удара (не любое сохранение)
+    fixed_at = models.DateTimeField(null=True, blank=True)
+    type_votes = models.JSONField(default=dict, blank=True)         # голоса водителей по типу: {manhole: 3, pothole_light: 1}
 
     class Meta:
         indexes = [models.Index(fields=["lat", "lon"]), models.Index(fields=["status"])]
@@ -97,3 +102,33 @@ class SegmentScore(models.Model):
     lat_a = models.FloatField(); lon_a = models.FloatField(); lat_b = models.FloatField(); lon_b = models.FloatField()
     speed_kmh = models.FloatField(); ri = models.FloatField(); cls = models.CharField(max_length=1)
     at = models.DateTimeField()
+
+
+class QuietPass(models.Model):
+    """Проезд мимо известной ямы БЕЗ удара (на достаточной скорости) — основа статуса «заделана»."""
+    cluster = models.ForeignKey(EventCluster, on_delete=models.CASCADE, related_name="quiet")
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="quiet_passes")
+    at = models.DateTimeField()
+    speed_kmh = models.FloatField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["cluster", "trip"], name="uniq_quiet_cluster_trip")]
+        indexes = [models.Index(fields=["cluster", "at"])]
+
+
+class Complaint(models.Model):
+    """Жалоба по яме (группе ям). Текст и координаты готовятся автоматически; отправка во внешнюю систему — вручную/интеграцией."""
+    CHANNELS = [("xalq_nazorati", "Xalq Nazorati"), ("mintrans", "Минтранс"), ("other", "другое")]
+    STATUS = [("draft", "черновик"), ("filed", "подана"), ("review", "рассмотрение"), ("answered", "дан ответ"), ("fixed", "исправлено"), ("rejected", "отклонена")]
+    cluster = models.ForeignKey(EventCluster, on_delete=models.CASCADE, related_name="complaints")
+    device = models.ForeignKey(Device, null=True, blank=True, on_delete=models.SET_NULL)
+    channel = models.CharField(max_length=20, choices=CHANNELS, default="xalq_nazorati")
+    text = models.TextField()
+    anonymous = models.BooleanField(default=True)
+    status = models.CharField(max_length=10, choices=STATUS, default="draft")
+    external_number = models.CharField(max_length=40, blank=True)   # номер обращения во внешней системе
+    due_at = models.DateTimeField(null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    filed_at = models.DateTimeField(null=True, blank=True)
+    answered_at = models.DateTimeField(null=True, blank=True)
