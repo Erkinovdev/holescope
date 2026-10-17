@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from fleet.models import CarModel, Device, Vehicle
 from roadnet.models import District, Road, Segment
-from telemetry.models import Complaint, EventCluster, RoadEvent, SegmentScore, Trip
+from telemetry.models import ClusterReport, Complaint, EventCluster, RoadEvent, SegmentScore, Trip
 from .auth import body, device_required
 
 ACTIVE = ("candidate", "confirmed", "complaint")
@@ -204,3 +204,82 @@ def my_stats(request):
     confirmed = clusters.filter(devices__gte=2).count()
     km = round(sum(Trip.objects.filter(device=dev).values_list("distance_km", flat=True)), 1)
     return JsonResponse({"nickname": dev.nickname, "found": found, "confirmed": confirmed, "km": km, "trips": Trip.objects.filter(device=dev).count(), "trust": round(dev.trust, 2)})
+
+
+def map_segments(request):
+    """Векторная карта качества дорог: сегменты сети в прямоугольнике. ?bbox=min_lat,min_lon,max_lat,max_lon&scored=1&limit=4000
+    scored=1 — только сегменты с оценкой ровности. Ответ компактный: массивы, чтобы мало весило на мобильной сети."""
+    try:
+        a, b, c, d = [float(x) for x in request.GET["bbox"].split(",")]
+    except (KeyError, ValueError):
+        return JsonResponse({"error": "bbox=min_lat,min_lon,max_lat,max_lon"}, status=400)
+    if (c - a) > 0.1 or (d - b) > 0.1:
+        return JsonResponse({"error": "bbox слишком большой (≤0.1°)"}, status=400)
+    limit = max(1, min(int(request.GET.get("limit", 4000) or 4000), 8000))
+    qs = Segment.objects.filter(lat_a__gte=a, lat_a__lte=c, lon_a__gte=b, lon_a__lte=d)
+    if request.GET.get("scored") == "1":
+        qs = qs.exclude(cls="")
+    # сначала важные дороги и оценённые сегменты
+    rows = qs.order_by("road__road_class", "-ri_n").values_list("id", "lat_a", "lon_a", "lat_b", "lon_b", "cls", "road__road_class", "direction")[:limit]
+    return JsonResponse({"segments": [[i, la, lo, lb, lb2, cls, rc, dr] for i, la, lo, lb, lb2, cls, rc, dr in rows], "limit": limit,
+                         "fields": ["id", "lat_a", "lon_a", "lat_b", "lon_b", "cls", "road_class", "direction"]})
+
+
+def search(request):
+    """Поиск улицы или района по названию. ?q=бабур — до 10 результатов с координатами для центрирования карты."""
+    q = (request.GET.get("q") or "").strip()
+    if len(q) < 2:
+        return JsonResponse({"error": "q ≥ 2 символа"}, status=400)
+    out = []
+    for d in District.objects.filter(level="district").filter(name_key__contains=q.lower())[:5]:
+        bb = d.bbox
+        if bb:
+            out.append(dict(type="district", code=d.code, name=d.name_ru, lat=(bb[0] + bb[2]) / 2, lon=(bb[1] + bb[3]) / 2))
+    roads = Road.objects.filter(named=True).filter(name_key__contains=q.lower()).order_by("road_class", "-length_m")[:10 - len(out)]
+    for r in roads:
+        s = r.segments.order_by("index").first()
+        if s:
+            mid = r.segments.count() // 2
+            s = r.segments.order_by("index")[mid] if mid else s
+            out.append(dict(type="road", code=r.code, name=r.name_ru, road_class=r.road_class, lat=(s.lat_a + s.lat_b) / 2, lon=(s.lon_a + s.lon_b) / 2))
+    return JsonResponse({"results": out})
+
+
+def cluster_detail(request, cid):
+    """Карточка ямы: улица, район, подтверждения, статус, жалобы."""
+    c = EventCluster.objects.filter(pk=cid).select_related("segment__road", "segment__district").first()
+    if not c:
+        return JsonResponse({"error": "not found"}, status=404)
+    seg = c.segment
+    return JsonResponse(dict(
+        id=c.pk, lat=c.lat, lon=c.lon, heading=c.heading, type=c.type, level=c.level, status=c.status, passes=c.passes, devices=c.devices,
+        confidence=c.confidence, safe_speed=c.safe_speed_kmh, first_seen=c.first_seen.isoformat(), last_hit=c.last_hit.isoformat() if c.last_hit else None,
+        fixed_at=c.fixed_at.isoformat() if c.fixed_at else None, complaints=c.complaints.exclude(status="draft").count(),
+        street=seg.road.name_ru if seg and seg.road.named else None, road=seg.road.code if seg else None, segment=seg.code if seg else None,
+        district=seg.district.name_ru if seg and seg.district else None))
+
+
+@csrf_exempt
+@device_required
+@require_http_methods(["POST"])
+def cluster_report(request, cid):
+    """Отметка водителя на карточке ямы: {"state": "present" | "fixed"}. Одна отметка в сутки от устройства на яму."""
+    c = EventCluster.objects.filter(pk=cid).first()
+    if not c:
+        return JsonResponse({"error": "not found"}, status=404)
+    state = body(request).get("state")
+    if state not in ("present", "fixed"):
+        return JsonResponse({"error": "state: present | fixed"}, status=400)
+    since = timezone.now() - timedelta(days=1)
+    if ClusterReport.objects.filter(cluster=c, device=request.device, at__gte=since).exists():
+        return JsonResponse({"error": "already reported today"}, status=429)
+    if request.device.trust < 0.3:
+        return JsonResponse({"error": "low trust"}, status=403)
+    ClusterReport.objects.create(cluster=c, device=request.device, state=state)
+    from brain import road_stats
+    fixed = road_stats.evaluate_fixed(c) if state == "fixed" else False
+    if state == "present" and c.status == "fixed":          # «на месте» после «заделана» — снова открываем
+        c.status, c.fixed_at = "candidate", None
+        c.save(update_fields=["status", "fixed_at"])
+    c.refresh_from_db()
+    return JsonResponse({"ok": True, "status": c.status, "fixed": fixed}, status=201)

@@ -8,10 +8,15 @@ class District(models.Model):
     osm_relation_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     name_ru = models.CharField(max_length=80)
     name_uz = models.CharField(max_length=80, blank=True)
+    name_key = models.CharField(max_length=200, blank=True, db_index=True)   # нижний регистр ru+uz для поиска
     level = models.CharField(max_length=10, choices=LEVELS, default="district")
     parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="children")
     bbox = models.JSONField(default=list, blank=True)               # [min_lat, min_lon, max_lat, max_lon]
     boundary = models.JSONField(null=True, blank=True)              # GeoJSON (позже → PostGIS geometry)
+
+    def save(self, *a, **kw):
+        self.name_key = f"{self.name_ru} {self.name_uz}".lower()
+        super().save(*a, **kw)
 
     def __str__(self):
         return self.name_ru
@@ -26,6 +31,7 @@ class Road(models.Model):
     code = models.CharField(max_length=12, unique=True)             # R01, A014, B203
     name_ru = models.CharField(max_length=120)
     name_uz = models.CharField(max_length=120, blank=True)
+    name_key = models.CharField(max_length=260, blank=True, db_index=True)   # нижний регистр ru+uz для поиска
     road_class = models.CharField(max_length=1, choices=CLASSES)
     surface = models.CharField(max_length=10, choices=SURFACES, default="unknown")
     osm_way_ids = models.JSONField(default=list, blank=True)
@@ -36,6 +42,10 @@ class Road(models.Model):
     length_m = models.FloatField(default=0.0)
     named = models.BooleanField(default=True)                       # False: «без названия» (группа по классу и району)
     class_reviewed = models.BooleanField(default=False)             # класс проверен человеком в админке
+
+    def save(self, *a, **kw):
+        self.name_key = f"{self.name_ru} {self.name_uz}".lower()
+        super().save(*a, **kw)
 
     def __str__(self):
         return f"{self.code} {self.name_ru}"

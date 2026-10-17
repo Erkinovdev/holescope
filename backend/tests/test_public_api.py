@@ -134,3 +134,46 @@ def test_upload_endpoint_errors_and_idempotency(network):
     dev.blocked = True
     dev.save()
     assert c.post("/api/v1/trips", json.dumps(payload()), content_type=J, headers=hdr(dev)).status_code == 403
+
+
+@pytest.mark.django_db
+def test_map_segments(city):
+    c = Client()
+    bb = f"{LAT0 - 0.001},{LON0 - 0.001},{LAT0 + 0.001},{LON0 + 0.01}"
+    j = c.get("/api/v1/map/segments", {"bbox": bb}).json()
+    assert len(j["segments"]) == 20 and j["fields"][5] == "cls"             # 500 м / 50 м = 10 сегментов в каждом направлении
+    scored = c.get("/api/v1/map/segments", {"bbox": bb, "scored": 1}).json()["segments"]
+    assert 0 < len(scored) <= 10 and all(s[5] == "C" for s in scored)         # RI 0.05 → C
+    assert c.get("/api/v1/map/segments", {"bbox": "0,0,5,5"}).status_code == 400
+    assert c.get("/api/v1/map/segments").status_code == 400
+    assert len(c.get("/api/v1/map/segments", {"bbox": bb, "limit": 5}).json()["segments"]) == 5
+
+
+@pytest.mark.django_db
+def test_search_cluster_detail_and_reports(city):
+    c = Client()
+    r = c.get("/api/v1/search", {"q": "тест"}).json()["results"]
+    assert r and r[0]["type"] == "road" and r[0]["name"] == "Улица Тест" and abs(r[0]["lat"] - LAT0) < 0.001
+    d = c.get("/api/v1/search", {"q": "Юнус"}).json()["results"]
+    assert d and d[0]["type"] == "district" and d[0]["code"] == "UZ-TSH-YUN"
+    assert c.get("/api/v1/search", {"q": "а"}).status_code == 400
+    cl = EventCluster.objects.filter(status="confirmed").first()
+    j = c.get(f"/api/v1/clusters/{cl.pk}").json()
+    assert j["street"] == "Улица Тест" and j["district"] == "Юнусабадский район" and j["devices"] == 2 and j["segment"].startswith("A001-")
+    assert c.get("/api/v1/clusters/999999").status_code == 404
+    # отметки: «заделана» от двух устройств после трёх суток тишины закрывает яму
+    EventCluster.objects.filter(pk=cl.pk).update(last_hit=timezone.now() - timedelta(days=3), passes=1)
+    a, b = mk_device(nickname="ra"), mk_device(nickname="rb")
+    third = mk_device(nickname="rc")
+    for dev in (a, b, third):
+        assert c.post(f"/api/v1/clusters/{cl.pk}/report", json.dumps({"state": "fixed"}), content_type=J, headers=hdr(dev)).status_code == 201
+    cl.refresh_from_db()
+    assert cl.status == "fixed"
+    # повтор в тот же день запрещён, неверное состояние — 400, низкое доверие — 403
+    assert c.post(f"/api/v1/clusters/{cl.pk}/report", json.dumps({"state": "fixed"}), content_type=J, headers=hdr(a)).status_code == 429
+    assert c.post(f"/api/v1/clusters/{cl.pk}/report", json.dumps({"state": "x"}), content_type=J, headers=hdr(mk_device(nickname="z"))).status_code == 400
+    assert c.post(f"/api/v1/clusters/{cl.pk}/report", json.dumps({"state": "present"}), content_type=J, headers=hdr(mk_device(nickname="lt", trust=0.1))).status_code == 403
+    # «на месте» открывает заделанную яму снова
+    assert c.post(f"/api/v1/clusters/{cl.pk}/report", json.dumps({"state": "present"}), content_type=J, headers=hdr(mk_device(nickname="p"))).status_code == 201
+    cl.refresh_from_db()
+    assert cl.status == "candidate"

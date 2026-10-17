@@ -136,7 +136,7 @@ def build_network(data: dict, log=print, replace: bool = True, only_city: bool =
         way_ids = sorted({raw[i][0]["id"] for i in idxs})[:200]
         name_ru = key[1] if named else f"Без названия ({dist.name_ru if dist else 'вне районов'})"
         name_uz = (w0["tags"].get("name:uz") or w0["tags"].get("name") or "") if named else ""
-        to_create.append((key, Road(code=code, name_ru=name_ru[:120], name_uz=name_uz[:120], road_class=cls, surface=surfs[0][0] if surfs else "unknown",
+        to_create.append((key, Road(code=code, name_ru=name_ru[:120], name_uz=name_uz[:120], name_key=f"{name_ru[:120]} {name_uz[:120]}".lower(), road_class=cls, surface=surfs[0][0] if surfs else "unknown",
                                     osm_way_ids=way_ids, district=dist, length_m=round(lengths[key], 1), named=named, speed_limit_kmh=classify.maxspeed(w0["tags"]))))
     Road.objects.bulk_create([r for _, r in to_create], batch_size=2000)
     saved = {r.code: r for r in Road.objects.all()}

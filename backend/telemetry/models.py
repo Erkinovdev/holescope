@@ -132,3 +132,15 @@ class Complaint(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     filed_at = models.DateTimeField(null=True, blank=True)
     answered_at = models.DateTimeField(null=True, blank=True)
+
+
+class ClusterReport(models.Model):
+    """Отметка водителя на карточке ямы: «на месте» / «заделана» (не за рулём, вручную)."""
+    STATES = [("present", "яма на месте"), ("fixed", "заделана")]
+    cluster = models.ForeignKey(EventCluster, on_delete=models.CASCADE, related_name="reports")
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    state = models.CharField(max_length=8, choices=STATES)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["cluster", "at"])]

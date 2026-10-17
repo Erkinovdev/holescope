@@ -124,6 +124,11 @@ def evaluate_fixed(cluster: EventCluster, now=None) -> bool:
     q = cluster.quiet.filter(at__gt=since)
     n = q.count()
     devs = q.values("device").distinct().count()
+    # отметки водителей «заделана» (вручную, после поездки) считаются как тихие проезды, но не больше одной от устройства
+    rep = cluster.reports.filter(state="fixed", at__gt=since)
+    rep_devs = rep.values("device").distinct().count()
+    n += rep_devs
+    devs = len(set(q.values_list("device", flat=True)) | set(rep.values_list("device", flat=True)))
     if n >= R["min_quiet"] and devs >= R["min_devices"] and n >= cluster.passes:
         cluster.status, cluster.fixed_at = "fixed", now
         cluster.save(update_fields=["status", "fixed_at"])
