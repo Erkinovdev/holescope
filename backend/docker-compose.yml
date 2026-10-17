@@ -47,6 +47,14 @@ services:
       - ../analysis:/analysis:ro
     command: ["sh", "-c", "sleep 120; while true; do python manage.py nightly; sleep 86400; done"]
 
+  # Админка (Vite+React, статика в nginx; /api проксируется на web)
+  admin:
+    build: ../admin-web
+    depends_on:
+      - web
+    ports:
+      - "${ADMIN_PORT:-8020}:80"
+
 volumes:
   pgdata:
   media:

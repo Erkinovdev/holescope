@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+/* Токены бренда (Figma «Holescope — Brand & Product»). Светлая тема — предложение, как и в приложении. */
+:root, [data-theme='dark'] {
+  --bg-base: #0b0d12; --bg-surface: #151922; --bg-raised: #1d222d; --line: #2a3040;
+  --text: #f2f4f8; --muted: #8f99ab; --amber: #ffb020; --amber-text: #ffb020; --amber-dim: #3a2c0f; --inverse: #0b0d12;
+  --smooth: #3ecf8e; --warn: #ff8a3d; --crater: #ff5d5d; --info: #4da3ff;
+  color-scheme: dark;
+}
+[data-theme='light'] {
+  --bg-base: #f4f6fa; --bg-surface: #ffffff; --bg-raised: #e8ecf3; --line: #d3d9e4;
+  --text: #12151c; --muted: #5b6577; --amber: #ffb020; --amber-text: #8a5a00; --amber-dim: #ffe9bd; --inverse: #0b0d12;
+  --smooth: #17724d; --warn: #9a4a00; --crater: #c02626; --info: #1d6fd1;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-canvas: var(--bg-base); --color-surface: var(--bg-surface); --color-raised: var(--bg-raised); --color-line: var(--line);
+  --color-ink: var(--text); --color-muted: var(--muted); --color-amber: var(--amber); --color-amber-text: var(--amber-text); --color-amber-dim: var(--amber-dim);
+  --color-smooth: var(--smooth); --color-warn: var(--warn); --color-crater: var(--crater); --color-info: var(--info); --color-inverse: var(--inverse);
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body { margin: 0; background: var(--bg-base); color: var(--text); font-family: var(--font-sans); font-size: 14px; -webkit-font-smoothing: antialiased; }
+* { scrollbar-color: var(--line) transparent; scrollbar-width: thin; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.maplibregl-ctrl-attrib { background: color-mix(in srgb, var(--bg-surface) 80%, transparent) !important; color: var(--muted) !important; }
+.maplibregl-ctrl-attrib a { color: var(--muted) !important; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
