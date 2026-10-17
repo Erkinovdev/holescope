@@ -6,7 +6,7 @@ enum Sensitivity { low, mid, high }
 
 enum PhoneMount { seat, cupholder, holder }
 
-enum DeviceRole { driver, passenger }
+enum DeviceRole { driver, passenger, research }
 
 /// Локальные настройки приложения (хранятся на устройстве).
 @immutable
@@ -22,6 +22,7 @@ class AppSettings {
     this.role = DeviceRole.driver,
     this.reduceMotion = false,
     this.onboarded = false,
+    this.autoRecord = true,
     this.carName,
     this.wheelbaseMm,
     this.tires,
@@ -30,7 +31,7 @@ class AppSettings {
 
   final ThemeMode themeMode;
   final Locale? locale;
-  final bool voice, beep, reduceMotion, onboarded;
+  final bool voice, beep, reduceMotion, onboarded, autoRecord;
   final int warnDistanceM; // 100..300 (этап 2: используется в /drive/ahead)
   final Sensitivity sensitivity;
   final PhoneMount mount;
@@ -51,6 +52,7 @@ class AppSettings {
     DeviceRole? role,
     bool? reduceMotion,
     bool? onboarded,
+    bool? autoRecord,
     Object? carName = _keep,
     Object? wheelbaseMm = _keep,
     Object? tires = _keep,
@@ -67,6 +69,7 @@ class AppSettings {
         role: role ?? this.role,
         reduceMotion: reduceMotion ?? this.reduceMotion,
         onboarded: onboarded ?? this.onboarded,
+        autoRecord: autoRecord ?? this.autoRecord,
         carName: identical(carName, _keep) ? this.carName : carName as String?,
         wheelbaseMm: identical(wheelbaseMm, _keep) ? this.wheelbaseMm : wheelbaseMm as int?,
         tires: identical(tires, _keep) ? this.tires : tires as String?,
@@ -96,6 +99,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       role: DeviceRole.values.byName(_p.getString('role') ?? 'driver'),
       reduceMotion: _p.getBool('reduceMotion') ?? false,
       onboarded: _p.getBool('onboarded') ?? false,
+      autoRecord: _p.getBool('autoRecord') ?? true,
       carName: _p.getString('carName'),
       wheelbaseMm: _p.getInt('wheelbaseMm'),
       tires: _p.getString('tires'),
@@ -116,6 +120,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _p.setString('role', s.role.name);
     _p.setBool('reduceMotion', s.reduceMotion);
     _p.setBool('onboarded', s.onboarded);
+    _p.setBool('autoRecord', s.autoRecord);
     _setOrRemove('carName', s.carName);
     _setOrRemove('tires', s.tires);
     s.wheelbaseMm == null ? _p.remove('wheelbaseMm') : _p.setInt('wheelbaseMm', s.wheelbaseMm!);

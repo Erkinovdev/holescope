@@ -494,3 +494,20 @@ class HpPage extends StatelessWidget {
     );
   }
 }
+
+/// Экран, заполняющий высоту: [children] сверху, [bottom] прижат к низу (Figma: Spacer + кнопка).
+class HpFill extends StatelessWidget {
+  const HpFill({super.key, required this.children, this.bottom = const [], this.top = 24});
+  final List<Widget> children, bottom;
+  final double top;
+  @override
+  Widget build(BuildContext context) => CustomScrollView(slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, top, 20, 20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [...children, const Spacer(), ...bottom]),
+          ),
+        ),
+      ]);
+}

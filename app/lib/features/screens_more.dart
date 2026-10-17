@@ -6,15 +6,14 @@ import 'package:holescope/core/widgets.dart';
 import 'package:holescope/l10n/app_localizations.dart';
 
 class _Fill extends StatelessWidget {
-  const _Fill({required this.children, this.bottom = const [], this.top = 20});
+  const _Fill({required this.children, this.bottom = const []});
   final List<Widget> children, bottom;
-  final double top;
   @override
   Widget build(BuildContext context) => CustomScrollView(slivers: [
         SliverFillRemaining(
           hasScrollBody: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20, top, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [...children, const Spacer(), ...bottom]),
           ),
         ),
@@ -23,50 +22,6 @@ class _Fill extends StatelessWidget {
 
 Color _scoreColor(HpColors c, num v) => v >= 70 ? c.smoothText : v >= 60 ? c.amberText : v >= 45 ? c.warnText : c.craterText;
 Color _scoreFill(HpColors c, num v) => v >= 70 ? c.smooth : v >= 60 ? c.amber : v >= 45 ? c.warn : c.crater;
-
-// ───────────────────────── Предупреждение (HUD) ─────────────────────────
-class WarningScreen extends StatelessWidget {
-  const WarningScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final c = context.hp;
-    // Текст на красном круге: белый (в Figma «muted» на красном имеет низкий контраст — усилен).
-    const onRed = Color(0xFFFFFFFF);
-    return HpPage(
-      child: _Fill(top: 24, bottom: [
-        HpCard(
-          padding: 20,
-          radius: 24,
-          child: Row(children: [
-            Expanded(child: Text(l.speedLabel, style: HpText.s(c.muted, 15, FontWeight.w500))),
-            Text('${Demo.speedKmh} ${l.kmh}', style: HpText.s(c.text, 28, FontWeight.w700)),
-          ]),
-        ),
-        HpButton(l.muteSound, kind: HpButtonKind.secondary, onPressed: () {}),
-      ], children: [
-        Align(alignment: Alignment.centerLeft, child: HpChip(l.warnAhead, Tone.major)),
-        const SizedBox(height: 40),
-        Center(
-          child: Column(spacing: 12, children: [
-            Container(
-              width: 260,
-              height: 260,
-              decoration: BoxDecoration(color: c.crater, shape: BoxShape.circle, border: Border.all(color: c.crater, width: 6)),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text('80', style: HpText.s(onRed, 96, FontWeight.w700, ls: -3.84, h: 1.1)),
-                Text(l.metersWord, style: HpText.s(onRed.withValues(alpha: 0.9), 18, FontWeight.w500)),
-              ]),
-            ),
-            Text(l.warnSlowDown, style: HpText.s(c.text, 28, FontWeight.w700, ls: -0.42)),
-            Text(l.warnDeepRight, style: HpText.s(c.muted, 16, FontWeight.w400)),
-            const DemoBanner(),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
 
 // ───────────────────────── Жалоба ─────────────────────────
 class ComplaintScreen extends StatelessWidget {

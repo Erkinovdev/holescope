@@ -991,6 +991,138 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'октябрь'**
   String get monthOctober;
+
+  /// No description provided for @ttsAhead.
+  ///
+  /// In ru, this message translates to:
+  /// **'Впереди яма, {distance} метров'**
+  String ttsAhead(int distance);
+
+  /// No description provided for @ttsAheadSlow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Впереди яма, {distance} метров. Снизьте скорость до {safe}'**
+  String ttsAheadSlow(int distance, int safe);
+
+  /// No description provided for @notifRecording.
+  ///
+  /// In ru, this message translates to:
+  /// **'Holescope записывает дорогу'**
+  String get notifRecording;
+
+  /// No description provided for @notifWaiting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Holescope ждёт поездку'**
+  String get notifWaiting;
+
+  /// No description provided for @permDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без этого разрешения запись невозможна. Откройте настройки и разрешите доступ.'**
+  String get permDenied;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть настройки'**
+  String get openSettings;
+
+  /// No description provided for @autoRecord.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автозапись поездок'**
+  String get autoRecord;
+
+  /// No description provided for @tripsHistory.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поездки'**
+  String get tripsHistory;
+
+  /// No description provided for @syncQueue.
+  ///
+  /// In ru, this message translates to:
+  /// **'В очереди на отправку: {n}'**
+  String syncQueue(int n);
+
+  /// No description provided for @levelDanger.
+  ///
+  /// In ru, this message translates to:
+  /// **'Опасная яма'**
+  String get levelDanger;
+
+  /// No description provided for @sideLeft.
+  ///
+  /// In ru, this message translates to:
+  /// **'слева'**
+  String get sideLeft;
+
+  /// No description provided for @sideRight.
+  ///
+  /// In ru, this message translates to:
+  /// **'справа'**
+  String get sideRight;
+
+  /// No description provided for @sideCenter.
+  ///
+  /// In ru, this message translates to:
+  /// **'по центру'**
+  String get sideCenter;
+
+  /// No description provided for @warnSideLine.
+  ///
+  /// In ru, this message translates to:
+  /// **'{level}, {side}'**
+  String warnSideLine(String level, String side);
+
+  /// No description provided for @manualStartHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запись начнётся автоматически, когда вы поедете'**
+  String get manualStartHint;
+
+  /// No description provided for @questionsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вопросов пока нет'**
+  String get questionsEmpty;
+
+  /// No description provided for @roleResearch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Исследовательский логгер'**
+  String get roleResearch;
+
+  /// No description provided for @roleResearchSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправляет сырые данные для обучения'**
+  String get roleResearchSub;
+
+  /// No description provided for @skipTrip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не записывать эту поездку'**
+  String get skipTrip;
+
+  /// No description provided for @tripKmShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value} км'**
+  String tripKmShort(String value);
+
+  /// No description provided for @driveDetecting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Определяем поездку…'**
+  String get driveDetecting;
+
+  /// No description provided for @profileNoNick.
+  ///
+  /// In ru, this message translates to:
+  /// **'Анонимный водитель'**
+  String get profileNoNick;
 }
 
 class _AppLocalizationsDelegate

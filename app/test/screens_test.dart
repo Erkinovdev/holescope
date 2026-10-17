@@ -3,15 +3,25 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:holescope/app.dart';
 import 'package:holescope/core/settings.dart';
+import 'package:holescope/features/screens_live.dart';
+import 'package:holescope/services/announcer.dart';
+import 'package:holescope/services/api_client.dart';
+import 'package:holescope/services/device_auth.dart';
+import 'package:holescope/services/engine.dart';
+import 'package:holescope/services/local_db.dart';
+import 'package:holescope/services/permissions.dart';
+import 'package:holescope/services/providers.dart';
+import 'package:holescope/services/sensor_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const routes = [
   '/map', '/drive', '/streets', '/profile', '/my-map', '/pothole/1', '/warning', '/settings', '/complaint', '/complaint/status',
   '/route', '/notifications', '/city', '/challenges', '/weekly', '/vehicle', '/question', '/trip-summary', '/mount', '/role',
-  '/permissions', '/onboarding/role', '/onboarding/mount',
+  '/permissions', '/onboarding/role', '/onboarding/mount', '/trips',
 ];
 
 Future<void> _loadInter() async {
@@ -20,13 +30,33 @@ Future<void> _loadInter() async {
   await loader.load();
 }
 
+List<Override> testOverrides(SharedPreferences prefs) {
+  final db = LocalDb.memory();
+  // одна поездка в истории, чтобы экраны итогов/истории показывали данные
+  db.addTrip(startedAt: DateTime(2026, 10, 17, 12).millisecondsSinceEpoch, endedAt: DateTime(2026, 10, 17, 12, 24).millisecondsSinceEpoch, distanceKm: 11.7, potholes: 27, summary: {'segments': {'A': 76, 'B': 106, 'C': 38, 'D': 8, 'E': 3}});
+  return [
+    prefsProvider.overrideWithValue(prefs),
+    dbProvider.overrideWithValue(db),
+    engineProvider.overrideWith((ref) => RecorderEngine(
+          db: db,
+          source: FakeSensorSource(),
+          api: ApiClient('http://127.0.0.1:1'),
+          announcer: SilentAnnouncer(),
+          auth: DeviceAuth(MemoryTokenStore()),
+          settings: () => ref.read(settingsProvider),
+        )),
+    permissionServiceProvider.overrideWithValue(FakePermissionService(const PermState())),
+    questionsProvider.overrideWith((ref) async => <QuestionDto>[]),
+  ];
+}
+
 Future<void> _pump(WidgetTester t, String route, {required String lang, required ThemeMode mode, Size size = const Size(390, 844)}) async {
   SharedPreferences.setMockInitialValues({'onboarded': true, 'theme': mode.name, 'locale': lang});
   final prefs = await SharedPreferences.getInstance();
   t.view.physicalSize = size * 2;
   t.view.devicePixelRatio = 2;
   addTearDown(t.view.resetPhysicalSize);
-  await t.pumpWidget(ProviderScope(overrides: [prefsProvider.overrideWithValue(prefs)], child: HoleScopeApp(initialLocation: route)));
+  await t.pumpWidget(ProviderScope(overrides: testOverrides(prefs), child: HoleScopeApp(initialLocation: route)));
   await t.pump(const Duration(milliseconds: 100));
   await t.pump(const Duration(milliseconds: 100));
 }
@@ -65,7 +95,7 @@ void main() {
   testWidgets('splash в режиме reduce motion короче', (t) async {
     SharedPreferences.setMockInitialValues({'onboarded': true, 'reduceMotion': true});
     final prefs = await SharedPreferences.getInstance();
-    await t.pumpWidget(ProviderScope(overrides: [prefsProvider.overrideWithValue(prefs)], child: const HoleScopeApp()));
+    await t.pumpWidget(ProviderScope(overrides: testOverrides(prefs), child: const HoleScopeApp()));
     await t.pump(const Duration(milliseconds: 900));
     await t.pump(const Duration(milliseconds: 300));
     expect(find.text('Карта'), findsWidgets);

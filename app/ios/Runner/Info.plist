@@ -45,5 +45,22 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Геолокация нужна, чтобы привязать ямы к месту на дороге. / Chuqurlarni yo‘lda joylashtirish uchun geolokatsiya kerak.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Holescope записывает дорогу в фоне во время поездки и предупреждает о ямах впереди. / Safar vaqtida fonda yo‘lni yozadi va oldindagi chuqurlar haqida ogohlantiradi.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Запись поездки в фоне и предупреждения о ямах. / Safarni fonda yozish va chuqurlar haqida ogohlantirish.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Датчики движения нужны, чтобы почувствовать удар по подвеске и понять, что вы едете на машине. / Osma tizimiga zarbani sezish va mashinada ketayotganingizni aniqlash uchun harakat datchiklari kerak.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

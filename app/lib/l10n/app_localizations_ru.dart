@@ -508,4 +508,82 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get monthOctober => 'октябрь';
+
+  @override
+  String ttsAhead(int distance) {
+    return 'Впереди яма, $distance метров';
+  }
+
+  @override
+  String ttsAheadSlow(int distance, int safe) {
+    return 'Впереди яма, $distance метров. Снизьте скорость до $safe';
+  }
+
+  @override
+  String get notifRecording => 'Holescope записывает дорогу';
+
+  @override
+  String get notifWaiting => 'Holescope ждёт поездку';
+
+  @override
+  String get permDenied =>
+      'Без этого разрешения запись невозможна. Откройте настройки и разрешите доступ.';
+
+  @override
+  String get openSettings => 'Открыть настройки';
+
+  @override
+  String get autoRecord => 'Автозапись поездок';
+
+  @override
+  String get tripsHistory => 'Поездки';
+
+  @override
+  String syncQueue(int n) {
+    return 'В очереди на отправку: $n';
+  }
+
+  @override
+  String get levelDanger => 'Опасная яма';
+
+  @override
+  String get sideLeft => 'слева';
+
+  @override
+  String get sideRight => 'справа';
+
+  @override
+  String get sideCenter => 'по центру';
+
+  @override
+  String warnSideLine(String level, String side) {
+    return '$level, $side';
+  }
+
+  @override
+  String get manualStartHint =>
+      'Запись начнётся автоматически, когда вы поедете';
+
+  @override
+  String get questionsEmpty => 'Вопросов пока нет';
+
+  @override
+  String get roleResearch => 'Исследовательский логгер';
+
+  @override
+  String get roleResearchSub => 'Отправляет сырые данные для обучения';
+
+  @override
+  String get skipTrip => 'Не записывать эту поездку';
+
+  @override
+  String tripKmShort(String value) {
+    return '$value км';
+  }
+
+  @override
+  String get driveDetecting => 'Определяем поездку…';
+
+  @override
+  String get profileNoNick => 'Анонимный водитель';
 }

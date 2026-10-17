@@ -1,10 +1,8 @@
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:holescope/core/demo.dart';
 import 'package:holescope/core/settings.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/core/widgets.dart';
@@ -107,109 +105,6 @@ class _VehicleScreenState extends ConsumerState<VehicleScreen> {
 
 // ───────────────────────── Вопрос «что это было?» ─────────────────────────
 /// Показывается ТОЛЬКО после остановки поездки (нет ввода за рулём).
-class QuestionScreen extends StatelessWidget {
-  const QuestionScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final c = context.hp;
-    final opts = [
-      (l.optPotholeLight, Tone.minor), (l.optPotholeMid, Tone.minor), (l.optPotholeDeep, Tone.major),
-      (l.optBump, Tone.smooth), (l.optManhole, Tone.info), (l.optRail, Tone.amber),
-    ];
-    return HpPage(
-      child: HpBody(top: 20, children: [
-        HpTitle(l.questionTitle),
-        HpSub(l.questionSub),
-        const DemoBanner(),
-        // TODO(этап 2): настоящая волна события из GET /questions/next (поле wave).
-        HpCard(padding: 12, child: SizedBox(height: 120, child: CustomPaint(painter: _WavePainter(c.amber, c.line), size: Size.infinite))),
-        Wrap(spacing: 10, runSpacing: 10, children: [
-          for (final o in opts)
-            SizedBox(
-              width: (MediaQuery.sizeOf(context).width - 50) / 2,
-              child: HpCard(
-                radius: 16,
-                border: true,
-                padding: 14,
-                onTap: () => context.pop(), // TODO(этап 2): POST /questions/{id}/answer
-                child: Row(spacing: 10, children: [HpDot(o.$2, size: 10), Expanded(child: Text(o.$1, style: HpText.s(c.text, 14, FontWeight.w600)))]),
-              ),
-            ),
-        ]),
-        HpButton(l.optNothing, kind: HpButtonKind.secondary, onPressed: () => context.pop()),
-        HpButton(l.optNotSure, kind: HpButtonKind.secondary, onPressed: () => context.pop()),
-      ]),
-    );
-  }
-}
-
-class _WavePainter extends CustomPainter {
-  const _WavePainter(this.line, this.axis);
-  final Color line, axis;
-  @override
-  void paint(Canvas canvas, Size s) {
-    canvas.drawLine(Offset(0, s.height / 2), Offset(s.width, s.height / 2), Paint()..color = axis);
-    final path = Path();
-    for (var i = 0; i <= 200; i++) {
-      final t = i / 200;
-      final y = t < 0.3 ? 0.0 : math.sin((t - 0.3) * 38) * math.exp(-(t - 0.3) * 7);
-      final p = Offset(t * s.width, s.height / 2 - y * s.height * 0.45);
-      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
-    }
-    canvas.drawPath(path, Paint()..color = line..style = PaintingStyle.stroke..strokeWidth = 2..strokeJoin = StrokeJoin.round);
-  }
-
-  @override
-  bool shouldRepaint(_WavePainter o) => false;
-}
-
-// ───────────────────────── Итоги поездки ─────────────────────────
-class TripSummaryScreen extends StatelessWidget {
-  const TripSummaryScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final c = context.hp;
-    Widget stat(String v, String t, {Color? color}) => Expanded(
-          child: HpCard(
-            padding: 16,
-            child: Column(spacing: 2, children: [
-              Text(v, style: HpText.s(color ?? c.amberText, 26, FontWeight.w700, ls: -0.26)),
-              Text(t, style: HpText.s(c.muted, 12, FontWeight.w500), textAlign: TextAlign.center),
-            ]),
-          ),
-        );
-    final perKm = (Demo.tripFound / Demo.tripKm).toStringAsFixed(1).replaceAll('.', ',');
-    return HpPage(
-      child: HpBody(top: 20, children: [
-        HpTitle(l.tripSummary),
-        const DemoBanner(),
-        Row(spacing: 10, children: [stat('7,2', l.tripKm), stat('${Demo.tripFound}', l.tripPotholes), stat(perKm, l.tripPerKm)]),
-        // TODO(этап 2): худший участок и распределение классов A–E считаются на устройстве (roughness.py).
-        HpCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
-            Text(l.tripRoughness, style: HpText.s(c.muted, 13, FontWeight.w500)),
-            Row(spacing: 6, children: [
-              for (final k in [('A', c.smooth), ('B', c.smooth), ('C', c.amber), ('D', c.warn), ('E', c.crater)])
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(color: k.$2.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
-                    alignment: Alignment.center,
-                    child: Text(k.$1, style: HpText.s(c.text, 14, FontWeight.w700)),
-                  ),
-                ),
-            ]),
-          ]),
-        ),
-        HpButton(l.questionTitle, kind: HpButtonKind.secondary, onPressed: () => context.push('/question')),
-        HpButton(l.tripDone, onPressed: () => context.go('/map')),
-      ]),
-    );
-  }
-}
-
 // ───────────────────────── Положение телефона / Роль ─────────────────────────
 class _ChoiceCard extends StatelessWidget {
   const _ChoiceCard({required this.title, this.sub, required this.selected, required this.onTap});

@@ -485,4 +485,82 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get monthOctober => 'oktabr';
+
+  @override
+  String ttsAhead(int distance) {
+    return 'Oldinda chuqur, $distance metr';
+  }
+
+  @override
+  String ttsAheadSlow(int distance, int safe) {
+    return 'Oldinda chuqur, $distance metr. Tezlikni $safe gacha pasaytiring';
+  }
+
+  @override
+  String get notifRecording => 'Holescope yo‘lni yozmoqda';
+
+  @override
+  String get notifWaiting => 'Holescope safarni kutmoqda';
+
+  @override
+  String get permDenied =>
+      'Bu ruxsatsiz yozib bo‘lmaydi. Sozlamalarni ochib, ruxsat bering.';
+
+  @override
+  String get openSettings => 'Sozlamalarni ochish';
+
+  @override
+  String get autoRecord => 'Safarlarni avtomatik yozish';
+
+  @override
+  String get tripsHistory => 'Safarlar';
+
+  @override
+  String syncQueue(int n) {
+    return 'Yuborish navbatida: $n';
+  }
+
+  @override
+  String get levelDanger => 'Xavfli chuqur';
+
+  @override
+  String get sideLeft => 'chapda';
+
+  @override
+  String get sideRight => 'o‘ngda';
+
+  @override
+  String get sideCenter => 'o‘rtada';
+
+  @override
+  String warnSideLine(String level, String side) {
+    return '$level, $side';
+  }
+
+  @override
+  String get manualStartHint =>
+      'Siz yo‘lga chiqqaningizda yozish avtomatik boshlanadi';
+
+  @override
+  String get questionsEmpty => 'Hozircha savollar yo‘q';
+
+  @override
+  String get roleResearch => 'Tadqiqot logeri';
+
+  @override
+  String get roleResearchSub => 'O‘qitish uchun xom ma’lumot yuboradi';
+
+  @override
+  String get skipTrip => 'Bu safarni yozmaslik';
+
+  @override
+  String tripKmShort(String value) {
+    return '$value km';
+  }
+
+  @override
+  String get driveDetecting => 'Safar aniqlanmoqda…';
+
+  @override
+  String get profileNoNick => 'Anonim haydovchi';
 }
