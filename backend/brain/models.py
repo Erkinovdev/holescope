@@ -76,3 +76,15 @@ class ModelAward(models.Model):
 
     class Meta:
         unique_together = ("period", "day", "car_model")
+
+
+class AuditLog(models.Model):
+    """Журнал действий сотрудников в админке (кто, что, когда)."""
+    user = models.ForeignKey("auth.User", null=True, on_delete=models.SET_NULL, related_name="+")
+    action = models.CharField(max_length=40)
+    target = models.CharField(max_length=60, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-at"]

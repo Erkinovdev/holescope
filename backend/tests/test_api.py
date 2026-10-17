@@ -187,7 +187,7 @@ def test_vehicle_profile_patch(c):
 
 @pytest.mark.django_db
 def test_admin_endpoints_need_staff(c, django_user_model):
-    assert c.get("/api/v1/admin/brain/summary").status_code == 403
+    assert c.get("/api/v1/admin/brain/summary").status_code == 401
     django_user_model.objects.create_user("a", password="x", is_staff=True)
     c.login(username="a", password="x")
     assert "current" in c.get("/api/v1/admin/brain/summary").json()

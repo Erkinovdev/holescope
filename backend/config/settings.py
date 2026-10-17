@@ -32,6 +32,12 @@ if os.environ.get("PG_NAME"):
         "HOST": os.environ.get("PG_HOST", "localhost"), "PORT": os.environ.get("PG_PORT", "5432")}}
 else:
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 LANGUAGE_CODE = "ru"
 TIME_ZONE = "Asia/Tashkent"
 USE_I18N = True

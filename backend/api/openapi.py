@@ -31,21 +31,74 @@ OPS = [
     ("/complaints", "post", "complaints", "Подготовить черновик жалобы по яме", "device", [], "cluster_id, channel, anonymous"),
     ("/complaints/{cid}", "get", "complaints", "Цепочка «нашли → подали → рассмотрение → исправили»", "device", [P("cid", "id жалобы")], None),
     ("/complaints/{cid}/send", "post", "complaints", "Отправить жалобу (статус filed)", "device", [P("cid", "id жалобы")], None),
-    ("/admin/brain/summary", "get", "admin", "Сводка «Мозга»", "staff", [], None),
-    ("/admin/brain/upload-csv", "post", "admin", "Загрузка CSV поездки на разбор", "staff", [], "file, wheelbase_m"),
+    ("/algo/params", "get", "brain", "Параметры активной версии правил (приложение применяет на устройстве)", None, [], None),
+]
+
+# Админка: (путь, метод, описание, минимальная роль, тело)
+ADMIN = [
+    ("/admin/login", "post", "Вход сотрудника → токен (12 ч)", None, "username, password"),
+    ("/admin/me", "get", "Текущий сотрудник и роль", "analyst", None),
+    ("/admin/overview", "get", "Обзор: KPI, активность по дням, очереди", "analyst", None),
+    ("/admin/clusters", "get", "Ямы: список с фильтрами и пагинацией", "analyst", None),
+    ("/admin/clusters/merge", "post", "Объединить дубли ям", "labeler", "ids[], into"),
+    ("/admin/clusters/create", "post", "Добавить яму вручную", "labeler", "lat, lon, type, level"),
+    ("/admin/clusters/{cid}", "get", "Яма: события, волны, голоса, тихие проезды", "analyst", None),
+    ("/admin/clusters/{cid}/patch", "patch", "Модерация: статус, тип, уровень, безопасная скорость", "labeler", "status, type, level, safe_speed"),
+    ("/admin/roads", "get", "Реестр дорог", "analyst", None),
+    ("/admin/roads/{rid}", "get", "Дорога: классы ровности, сегменты", "analyst", None),
+    ("/admin/roads/{rid}/patch", "patch", "Править класс, покрытие, названия", "admin", "road_class, surface, name_ru, name_uz, speed_limit_kmh"),
+    ("/admin/devices", "get", "Устройства", "analyst", None),
+    ("/admin/devices/{did}", "get", "Карточка устройства", "analyst", None),
+    ("/admin/devices/{did}/patch", "patch", "Роль, блокировка, доверие, положение, калибровка", "admin", "role, blocked, trust, mount, reset_calibration"),
+    ("/admin/vehicles/{vid}/patch", "patch", "Профиль машины и подвески", "admin", "name, car_model_id, year, wheelbase_mm, rim_inch, tire_pressure_bar, suspension_note, suspension_cls"),
+    ("/admin/trips", "get", "Поездки", "analyst", None),
+    ("/admin/trips/{tid}", "get", "Поездка: события с волнами, сегменты", "analyst", None),
+    ("/admin/car-models", "get", "Справочник моделей авто", "analyst", None),
+    ("/admin/car-models/create", "post", "Добавить модель авто", "admin", "brand, model, wheelbase_mm, specs_verified, source_url"),
+    ("/admin/car-models/{cid}/patch", "patch", "Править модель авто", "admin", "..."),
+    ("/admin/complaints", "get", "Жалобы", "analyst", None),
+    ("/admin/complaints/{cid}/patch", "patch", "Статус, номер обращения, срок ответа", "labeler", "status, external_number, due_at, text"),
+    ("/admin/users", "get", "Сотрудники", "admin", None),
+    ("/admin/users/create", "post", "Создать сотрудника", "admin", "username, password, role"),
+    ("/admin/users/{uid}/patch", "patch", "Роль и активность сотрудника", "admin", "role, is_active"),
+    ("/admin/users/{uid}/password", "post", "Сменить пароль сотрудника", "admin", "password"),
+    ("/admin/audit", "get", "Журнал действий", "admin", None),
+    ("/admin/brain/summary", "get", "Сводка «Мозга»", "analyst", None),
+    ("/admin/brain/timeline", "get", "Версии, метрики, снимки роста", "analyst", None),
+    ("/admin/brain/graph", "get", "Граф для 3D-визуализации", "analyst", None),
+    ("/admin/brain/questions", "get", "Очередь вопросов и разметки", "analyst", None),
+    ("/admin/brain/label", "post", "Разметить событие", "labeler", "event_id, label"),
+    ("/admin/brain/params", "get", "Параметры активной версии правил", "analyst", None),
+    ("/admin/brain/params/save", "put", "Сохранить параметры как новую версию правил", "admin", "params, activate, notes"),
+    ("/admin/brain/activate", "post", "Включить версию", "admin", "version_id, force"),
+    ("/admin/brain/deactivate", "post", "Выключить версию", "admin", "version_id"),
+    ("/admin/brain/train", "post", "Обучить на накопленной разметке", "admin", None),
+    ("/admin/brain/uploads", "get", "Загруженные CSV", "analyst", None),
+    ("/admin/brain/uploads/{rid}/review", "get", "Сигнал, события и путь записи", "analyst", None),
+    ("/admin/brain/preview", "post", "Предпросмотр параметров на записи", "analyst", "raw_id, params"),
+    ("/admin/brain/upload-csv", "post", "Загрузить CSV поездки на разбор (multipart)", "labeler", "file, wheelbase_m"),
 ]
 
 
 def build_spec() -> dict:
     paths: dict = {}
+    import re
+    for path, method, summary, role, bod in ADMIN:
+        params = [P(n, n) for n in re.findall(r"\{(\w+)\}", path)]
+        op = dict(tags=["admin"], summary=summary, parameters=params, responses={"200": {"description": "OK", "content": {"application/json": {"schema": OBJ}}}})
+        if role:
+            op["security"] = [{"AdminToken": []}]
+            op["description"] = f"Роль не ниже: {role}"
+            op["responses"]["401"] = {"description": "нет токена"}
+            op["responses"]["403"] = {"description": "роль ниже требуемой"}
+        if bod:
+            op["requestBody"] = {"description": bod, "content": {"application/json": {"schema": OBJ}}}
+        paths.setdefault(path, {})[method] = op
     for path, method, tag, summary, auth, params, body in OPS:
         op = dict(tags=[tag], summary=summary, parameters=params, responses={"200": {"description": "OK", "content": {"application/json": {"schema": OBJ}}}})
         if auth == "device":
             op["security"] = [{"DeviceToken": []}]
             op["responses"]["401"] = {"description": "нет или неверный X-Device-Token"}
-        elif auth == "staff":
-            op["security"] = [{"SessionAuth": []}]
-            op["responses"]["403"] = {"description": "нужен вход сотрудника"}
         if body:
             op["requestBody"] = {"description": body, "content": {"application/json": {"schema": OBJ}}}
         paths.setdefault(path, {})[method] = op
@@ -53,7 +106,7 @@ def build_spec() -> dict:
         "openapi": "3.0.3",
         "info": {"title": "Holescope API", "version": "1.0.0", "description": "API v1: приём поездок, карта ям, режим Drive, рейтинги. Данные обезличены: токен устройства без почты и номера."},
         "servers": [{"url": "/api/v1"}],
-        "components": {"securitySchemes": {"DeviceToken": {"type": "apiKey", "in": "header", "name": "X-Device-Token"}, "SessionAuth": {"type": "apiKey", "in": "cookie", "name": "sessionid"}}},
+        "components": {"securitySchemes": {"DeviceToken": {"type": "apiKey", "in": "header", "name": "X-Device-Token"}, "AdminToken": {"type": "http", "scheme": "bearer"}}},
         "paths": paths,
     }
 

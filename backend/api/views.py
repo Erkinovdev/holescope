@@ -9,7 +9,7 @@ from fleet.models import Device, Vehicle, CarModel
 from telemetry.models import Trip, RoadEvent, EventCluster, RawUpload
 from brain.models import Question, Label, BrainSnapshot, AlgoVersion
 from brain import services, road_stats, validation
-from .auth import device_required, staff_required, body
+from .auth import device_required, body
 
 NICK_A = ["Тихий", "Быстрый", "Ночной", "Ясный", "Смелый", "Зоркий"]
 NICK_B = ["Сокол", "Беркут", "Барс", "Ястреб", "Кречет", "Лис"]
@@ -143,35 +143,3 @@ def ahead(request):
                             level=c.level, type=c.type, confidence=c.confidence, safe_speed=c.safe_speed_kmh))
     out.sort(key=lambda x: x["distance_m"])
     return JsonResponse({"ahead": out[:5]})
-
-
-@csrf_exempt
-@staff_required
-@require_http_methods(["POST"])
-def admin_upload_csv(request):
-    """Админка «Мозг»: ручная загрузка CSV поездки на разбор. Прогоняет алгоритм и показывает отчёт."""
-    from holescope_algo.pipeline import process_csv
-    from holescope_algo.params import Params
-    f = request.FILES.get("file")
-    if not f:
-        return JsonResponse({"error": "file required"}, status=400)
-    ru = RawUpload.objects.create(file=f, filename=f.name)
-    wb = float(request.POST.get("wheelbase_m", 2.6))
-    r = process_csv(ru.file.path, Params(wheelbase_m=wb))
-    ru.processed = True; ru.algo_version = r["algo_version"]
-    ru.report = dict(events=len(r["events"]), segments=len(r["segments"]), hand=len(r["hand_segments"]),
-                     auto_trips=r["auto_trips"], damping=r["damping"], suspension=r["suspension"])
-    ru.save()
-    return JsonResponse({"raw_id": ru.pk, "report": ru.report})
-
-
-@staff_required
-def admin_brain_summary(request):
-    """Сводка «Мозга» для дашборда."""
-    snap = list(BrainSnapshot.objects.order_by("-day")[:60].values())
-    cur = dict(events=RoadEvent.objects.count(), clusters=EventCluster.objects.count(),
-               confirmed=EventCluster.objects.filter(status="confirmed").count(),
-               labels=Label.objects.count(), questions_open=Question.objects.filter(status="open").count(),
-               devices=Device.objects.count(), vehicles=Vehicle.objects.count(),
-               active_algo=str(AlgoVersion.objects.filter(active=True).first() or "rules 2.0.0"))
-    return JsonResponse({"current": cur, "history": snap})
