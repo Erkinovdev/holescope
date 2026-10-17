@@ -148,7 +148,7 @@ class SplashPainter extends CustomPainter {
     final scan = _ease(_seg(t, 0.08, 0.68));
     final collapse = _ease(_seg(t, 0.70, 0.88));
     final reveal = _ease(_seg(t, 0.84, 0.96));
-    final mapAlpha = _ease(_seg(t, 0.0, 0.18)) * (1 - collapse * 0.85);
+    final mapAlpha = _ease(_seg(t, 0.0, 0.18)) * (1 - collapse);
 
     final reticleU = _at(scan);
     // «Камера» немного следует за прицелом.

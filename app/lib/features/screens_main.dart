@@ -80,7 +80,13 @@ class PermissionsScreen extends ConsumerWidget {
 
 // ───────────────────────── Поездка (Drive) ─────────────────────────
 /// Локальное состояние записи. TODO(этап 2): состояние из фонового сервиса и авто-старт/стоп (trip_state).
-final recordingProvider = StateProvider<bool>((ref) => true);
+class RecordingNotifier extends Notifier<bool> {
+  @override
+  bool build() => true;
+  void toggle() => state = !state;
+}
+
+final recordingProvider = NotifierProvider<RecordingNotifier, bool>(RecordingNotifier.new);
 
 class DriveScreen extends ConsumerWidget {
   const DriveScreen({super.key});
@@ -94,7 +100,7 @@ class DriveScreen extends ConsumerWidget {
         rec ? l.driveStop : l.driveStart,
         kind: rec ? HpButtonKind.danger : HpButtonKind.primary,
         onPressed: () {
-          ref.read(recordingProvider.notifier).state = !rec;
+          ref.read(recordingProvider.notifier).toggle();
           if (rec) context.push('/trip-summary');
         },
       ),

@@ -1,16 +1,9 @@
-# holescope
-
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Holescope (Flutter)
+```
+flutter pub get
+flutter gen-l10n        # lib/l10n (ru, uz)
+flutter analyze && flutter test
+flutter run             # Android / iOS
+```
+Android: нужен JDK (подойдёт Android Studio `jbr`): `flutter config --jdk-dir "<AndroidStudio>/jbr"`.
+Данные экранов пока демо (`lib/core/demo.dart`). Подробности: ../HOLESCOPE_V2.md, раздел 9.
