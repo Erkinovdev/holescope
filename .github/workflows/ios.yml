@@ -1,0 +1,23 @@
+name: iOS IPA (без подписи)
+on:
+  workflow_dispatch:
+  push:
+    paths: ["app/**", ".github/workflows/ios.yml"]
+jobs:
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 60
+    defaults: { run: { working-directory: app } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign --dart-define=API_BASE=${{ vars.API_BASE || 'https://holescop.duckdns.org' }}
+      - name: Упаковка в IPA
+        run: |
+          mkdir -p ../out/Payload
+          cp -R build/ios/iphoneos/Runner.app ../out/Payload/
+          (cd ../out && zip -qry holescope.ipa Payload && rm -rf Payload)
+      - uses: actions/upload-artifact@v4
+        with: { name: holescope-ipa, path: out/holescope.ipa }

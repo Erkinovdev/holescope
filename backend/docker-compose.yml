@@ -1,7 +1,7 @@
 # PostGIS-образ: геометрию в моделях пока не используем (lat/lon + индексы), но БД сразу готова к миграции на PostGIS.
 services:
   db:
-    image: postgis/postgis:16-3.4
+    image: ${DB_IMAGE:-postgis/postgis:16-3.4}
     environment:
       POSTGRES_DB: ${PG_NAME:-holescope}
       POSTGRES_USER: ${PG_USER:-holescope}
