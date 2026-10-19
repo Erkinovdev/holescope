@@ -32,13 +32,15 @@ export default function CalibrationTab() {
             <dt className="text-muted">Точность сейчас</dt><dd>{levels.acc_current === null ? 'нужно ≥12 меток' : `${Math.round(levels.acc_current * 100)}%`}</dd>
             <dt className="text-muted">Предложение</dt><dd>{levels.suggested ? fmt(levels.suggested) : 'пока нет'}</dd>
             <dt className="text-muted">Точность с предложением</dt><dd>{levels.acc_suggested === null ? '—' : `${Math.round(levels.acc_suggested * 100)}%`}</dd>
+            <dt className="text-muted">На новых данных (проверка)</dt><dd>{levels.cv_current === null ? '—' : `${Math.round(levels.cv_current * 100)}% → ${Math.round((levels.cv_suggested ?? 0) * 100)}%`}</dd>
           </dl>
           {can('admin') && (
-            <Button kind="primary" disabled={!levels.suggested || (levels.acc_suggested ?? 0) <= (levels.acc_current ?? 1)} loading={apply.isPending} onClick={() => apply.mutate({ kind: 'levels', bounds: levels.suggested! })}>
+            <Button kind="primary" disabled={!levels.suggested || !levels.significant} loading={apply.isPending} onClick={() => apply.mutate({ kind: 'levels', bounds: levels.suggested! })}>
               Применить предложение
             </Button>
           )}
-          {levels.suggested && (levels.acc_suggested ?? 0) <= (levels.acc_current ?? 1) && <p className="mt-2 text-xs text-muted">Текущие границы уже подходят не хуже предложенных: менять не нужно.</p>}
+          {levels.suggested && !levels.significant && <p className="mt-2 text-xs text-muted">Предложение пока не лучше текущих границ на отложенных данных (разметки мало или метки слабо связаны с силой удара): менять не нужно. Нужно больше размеченных ям, особенно глубоких и опасных.</p>}
+          {levels.significant && <p className="mt-2 text-xs text-smooth">На отложенных данных предложение стабильно лучше текущих границ.</p>}
         </Card>
         <Card>
           <CardTitle right={<Chip tone={ri.enough ? 'smooth' : 'muted'}>{ri.enough ? 'данных достаточно' : 'мало оценок'}</Chip>}>Классы ровности A–E (индекс ровности)</CardTitle>

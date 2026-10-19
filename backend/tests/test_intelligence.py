@@ -63,6 +63,14 @@ def test_suggest_level_bounds_improves_on_shifted_data():
     out = it.suggest_level_bounds(pairs)
     assert out["suggested"] and out["acc_suggested"] >= out["acc_current"]
     assert out["acc_suggested"] > 0.85
+    assert out["significant"] and out["cv_suggested"] > out["cv_current"]
+
+
+def test_noise_is_not_reported_as_improvement():
+    rng = np.random.default_rng(1)
+    pairs = [(float(rng.uniform(1, 20)), ["light", "mid", "deep", "danger"][int(rng.integers(0, 4))]) for _ in range(40)]  # метки не связаны с силой удара
+    out = it.suggest_level_bounds(pairs)
+    assert not out["significant"]
 
 
 def test_suggest_level_bounds_needs_data():

@@ -194,31 +194,56 @@ def guess_type(features: dict, ctx: dict | None = None, wave: list | None = None
 LEVELS = ["light", "mid", "deep", "danger"]
 
 
-def suggest_level_bounds(pairs: list[tuple[float, str]], current=(5.0, 8.0, 14.0)) -> dict:
-    """pairs: [(score, level)] по размеченным ямам. Подбирает три границы (между light|mid, mid|deep, deep|danger), максимизируя долю верных уровней.
-    Возвращает предложение и точность до/после; без достаточной разметки — только текущие значения."""
-    data = [(s, LEVELS.index(l)) for s, l in pairs if l in LEVELS and s is not None and math.isfinite(s)]
-    counts = {l: sum(1 for _, i in data if i == k) for k, l in enumerate(LEVELS)}
-    out = dict(n=len(data), counts=counts, current=list(current), suggested=None, acc_current=None, acc_suggested=None)
-    if len(data) < 12:
-        return out
+def _bucket(s: float, b) -> int:
+    return 0 if s < b[0] else 1 if s < b[1] else 2 if s < b[2] else 3
 
+
+def _fit_bounds(data: list[tuple[float, int]], start) -> tuple[tuple[float, float, float], float]:
+    """Три границы, дающие наибольшую долю верных уровней на data (перебор по кандидатам-квантилям)."""
     def acc(b):
-        ok = sum(1 for s, i in data if (0 if s < b[0] else 1 if s < b[1] else 2 if s < b[2] else 3) == i)
-        return ok / len(data)
-
-    out["acc_current"] = round(acc(current), 3)
+        return sum(1 for s, i in data if _bucket(s, b) == i) / len(data)
     scores = sorted({round(s, 2) for s, _ in data})
     cand = scores if len(scores) <= 40 else [float(q) for q in np.quantile([s for s, _ in data], np.linspace(0.02, 0.98, 40))]
-    best, bacc = tuple(current), acc(current)
+    best, bacc = tuple(start), acc(start)
     for i, a in enumerate(cand):
         for j in range(i + 1, len(cand)):
             for k in range(j + 1, len(cand)):
                 v = acc((a, cand[j], cand[k]))
                 if v > bacc + 1e-9:
                     best, bacc = (a, cand[j], cand[k]), v
+    return best, bacc
+
+
+def suggest_level_bounds(pairs: list[tuple[float, str]], current=(5.0, 8.0, 14.0), min_cv_gain: float = 0.03) -> dict:
+    """pairs: [(score, level)] по размеченным ямам. Подбирает три границы (light|mid, mid|deep, deep|danger) по доле верных уровней.
+    Чтобы подбор на малой разметке не выдавал шум за улучшение, считается ещё и оценка на отложенных данных (5 частей):
+    предложение считается значимым (`significant`), только если на отложенных данных оно лучше текущих границ минимум на 3 п.п."""
+    data = [(float(s), LEVELS.index(l)) for s, l in pairs if l in LEVELS and s is not None and math.isfinite(s)]
+    counts = {l: sum(1 for _, i in data if i == k) for k, l in enumerate(LEVELS)}
+    out = dict(n=len(data), counts=counts, current=list(current), suggested=None, acc_current=None, acc_suggested=None, cv_current=None, cv_suggested=None, significant=False)
+    if len(data) < 12:
+        return out
+    out["acc_current"] = round(sum(1 for s, i in data if _bucket(s, current) == i) / len(data), 3)
+    best, bacc = _fit_bounds(data, current)
     out["suggested"] = [round(float(x), 2) for x in best]
     out["acc_suggested"] = round(bacc, 3)
+    # оценка на отложенных данных
+    rng = np.random.default_rng(0)
+    idx = rng.permutation(len(data))
+    folds = np.array_split(idx, 5)
+    cur_ok = sug_ok = tot = 0
+    for f in folds:
+        test = [data[i] for i in f]
+        train = [data[i] for i in idx if i not in set(f)]
+        if len(train) < 8 or not test:
+            continue
+        b, _ = _fit_bounds(train, current)
+        sug_ok += sum(1 for s, i in test if _bucket(s, b) == i)
+        cur_ok += sum(1 for s, i in test if _bucket(s, current) == i)
+        tot += len(test)
+    if tot:
+        out["cv_current"], out["cv_suggested"] = round(cur_ok / tot, 3), round(sug_ok / tot, 3)
+        out["significant"] = out["cv_suggested"] - out["cv_current"] >= min_cv_gain and best != tuple(current)
     return out
 
 

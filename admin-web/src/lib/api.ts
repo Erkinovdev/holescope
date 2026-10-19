@@ -90,7 +90,7 @@ export interface Analysis {
   roughness: { cls: string; name: string; ri: number | null; passes: number; devices: number; road: string; road_class: string; surface: string; flags: string[] } | null
 }
 export interface Calibration {
-  levels: { n: number; counts: Record<string, number>; current: number[]; suggested: number[] | null; acc_current: number | null; acc_suggested: number | null; active: boolean; default: number[] }
+  levels: { n: number; counts: Record<string, number>; current: number[]; suggested: number[] | null; acc_current: number | null; acc_suggested: number | null; cv_current: number | null; cv_suggested: number | null; significant: boolean; active: boolean; default: number[] }
   ri: { stats: Record<string, { n: number; median: number | null; p25: number | null; p75: number | null }>; current: number[]; suggested: number[] | null; enough: boolean; warning?: string; names: Record<string, string> }
 }
 export interface ClusterDetail extends Cluster { analysis?: Analysis; why: string; events: ClusterEvent[]; type_votes: Record<string, number>; complaints: number; quiet: { at: string; speed_kmh: number; device_id: number }[] }

@@ -238,7 +238,7 @@ def train_types() -> TrainingRun:
     from sklearn.metrics import accuracy_score, f1_score
     from sklearn.model_selection import GroupKFold
     X, y, g, rules = collect_types()
-    counts = {k: int((y == k).sum()) for k in sorted(set(y))} if len(y) else {}
+    counts = {str(k): int((y == k).sum()) for k in sorted(set(y))} if len(y) else {}
     run = TrainingRun(n_labels=len(y))
     usable = [k for k, n in counts.items() if n >= TYPE_MIN_PER_CLASS]
     if len(y) < TYPE_MIN_TOTAL or len(usable) < 2:
