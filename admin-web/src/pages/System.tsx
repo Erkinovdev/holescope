@@ -28,7 +28,7 @@ export default function System() {
                 {d.services.map((s) => (
                   <li key={s.name} className="flex items-center gap-3 py-3 text-sm">
                     <span className={`h-2.5 w-2.5 rounded-full ${STATE[s.state][1]}`} aria-hidden /><span className="font-medium">{s.name}</span>
-                    <span className="ml-auto text-right text-muted">{STATE[s.state][0]} · {s.detail}</span>
+                    <span className="ml-auto text-right text-muted">{STATE[s.state][0]} · {s.detail.replace(/\d{4}-\d\d-\d\dT[\d:.+]+/, (m) => fmtDateTime(m))}</span>
                   </li>
                 ))}
               </ul>

@@ -19,11 +19,13 @@ export function BarChart({ data, height = 190, color = 'var(--amber)' }: { data:
               <rect x={pad + i * bw + bw * 0.12} width={bw * 0.76} y={height - 22 - h} height={Math.max(h, d.value > 0 ? 2 : 0)} rx={4} fill={color} opacity={hover === null || hover === i ? 1 : 0.5}>
                 <title>{`${d.label}: ${d.value.toLocaleString('ru-RU')}${d.sub ? ` · ${d.sub}` : ''}`}</title>
               </rect>
-              {(data.length <= 16 || i % Math.ceil(data.length / 12) === 0) && <text x={pad + i * bw + bw / 2} y={height - 6} textAnchor="middle" fontSize={20} fill="var(--muted)">{d.label}</text>}
             </g>
           )
         })}
       </svg>
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex text-[11px] text-muted" style={{ paddingInline: `${(22 / 1000) * 100}%` }}>
+        {data.map((d, i) => <span key={d.label + i} className="min-w-0 flex-1 text-center">{(data.length <= 16 || i % Math.ceil(data.length / 8) === 0) ? d.label : ''}</span>)}
+      </div>
       {hover !== null && <div className="pointer-events-none absolute right-2 top-0 rounded-lg bg-raised px-3 py-1.5 text-xs">{data[hover].label}: <b>{data[hover].value.toLocaleString('ru-RU')}</b>{data[hover].sub ? ` · ${data[hover].sub}` : ''}</div>}
     </div>
   )
@@ -36,6 +38,7 @@ export function LineChart({ labels, series, height = 200, yMin = 0, yMax = 1 }: 
   const x = (i: number) => pad + (labels.length <= 1 ? (W - pad * 2) / 2 : (i * (W - pad * 2)) / (labels.length - 1))
   const y = (v: number) => height - 26 - ((v - yMin) / (yMax - yMin || 1)) * (height - 46)
   return (
+    <div>
     <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }} role="img" aria-label="График метрик">
       {[0, 0.25, 0.5, 0.75, 1].map((g) => <line key={g} x1={pad} x2={W - pad} y1={y(yMin + g * (yMax - yMin))} y2={y(yMin + g * (yMax - yMin))} stroke="var(--line)" strokeDasharray="4 6" />)}
       {series.map((s) => {
@@ -48,8 +51,9 @@ export function LineChart({ labels, series, height = 200, yMin = 0, yMax = 1 }: 
           </g>
         )
       })}
-      {labels.map((l, i) => <text key={l + i} x={x(i)} y={height - 6} textAnchor="middle" fontSize={20} fill="var(--muted)">{l}</text>)}
     </svg>
+    <div className="flex justify-between px-2 text-[11px] text-muted">{labels.filter((_, i) => labels.length <= 8 || i % Math.ceil(labels.length / 8) === 0).map((l, i) => <span key={l + i}>{l}</span>)}</div>
+    </div>
   )
 }
 

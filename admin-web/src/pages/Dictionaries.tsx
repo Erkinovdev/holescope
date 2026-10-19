@@ -44,7 +44,7 @@ export function CarModels() {
       {q.data && <Table rowKey={(r) => r.id} rows={q.data.items} onRow={can('admin') ? (r) => setEdit(r) : undefined} cols={[
         { key: 'r', title: '#', width: '50px', render: (r) => r.popularity_rank ?? '—' },
         { key: 'm', title: 'Модель', render: (r) => <b>{r.brand} {r.model}</b> },
-        { key: 'wb', title: 'Колёсная база, мм', render: (r) => r.wheelbase_mm ?? <span className="text-muted">TODO</span> },
+        { key: 'wb', title: 'Колёсная база, мм', render: (r) => r.wheelbase_mm ?? <span className="text-muted">нет данных</span> },
         { key: 'tire', title: 'Шины', render: (r) => r.tire_size || '—' },
         { key: 'ev', title: 'Тип', render: (r) => (r.is_ev ? 'электро' : 'ДВС / гибрид') },
         { key: 'v', title: 'Данные', render: (r) => (r.specs_verified ? <Chip tone="smooth">подтверждены</Chip> : <Chip tone="warn">не проверены</Chip>) },

@@ -49,7 +49,7 @@ export default function Overview() {
               <p className="mt-3 text-xs text-muted">Оценено {fmtNum(scored)} из {fmtNum(d.segments_total)} сегментов дорожной сети.</p>
             </Card>
           </div>
-          <div className="grid gap-4 xl:grid-cols-[360px_1fr_300px]">
+          <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)_280px]">
             <Card>
               <CardTitle>Очередь работы</CardTitle>
               <ul className="flex flex-col gap-2 text-sm">
@@ -79,7 +79,7 @@ export default function Overview() {
                 ]}
               />
             </div>
-            <Card>
+            <Card className="lg:col-span-2 2xl:col-span-1">
               <CardTitle>Мозг сегодня</CardTitle>
               <div className="grid place-items-center rounded-2xl bg-raised py-5 text-amber"><Icon name="brain" size={64} /></div>
               <div className="mt-3 text-xs text-muted">Версия {d.brain?.version ?? '—'} · метка F1 {d.brain?.f1 != null ? d.brain.f1.toFixed(2) : '—'}</div>
