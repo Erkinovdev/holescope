@@ -8,7 +8,7 @@ workflows:
       flutter: stable
       java: 17
       vars:
-        API_BASE: "http://95.217.220.168"
+        API_BASE: "https://holescop.duckdns.org"
     scripts:
       - name: Зависимости
         script: flutter pub get
@@ -31,7 +31,7 @@ workflows:
       xcode: latest
       cocoapods: default
       vars:
-        API_BASE: "http://95.217.220.168"
+        API_BASE: "https://holescop.duckdns.org"
     scripts:
       - name: Зависимости
         script: flutter pub get
