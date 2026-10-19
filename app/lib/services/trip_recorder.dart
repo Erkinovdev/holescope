@@ -309,7 +309,7 @@ class TripRecorder {
       _emit();
       return null;
     }
-    final params = const AlgoParams().copyWith(wheelbaseM: ctx.wheelbaseM);
+    final params = AlgoParams.current.copyWith(wheelbaseM: ctx.wheelbaseM);
     final startedAt = DateTime.fromMillisecondsSinceEpoch((end.start * 1000).round());
     final endedAt = DateTime.fromMillisecondsSinceEpoch((end.end * 1000).round());
     TripResult res;
@@ -385,7 +385,7 @@ class TripRecorder {
     final nowMs = _lastFix!.tMs.toDouble();
     final from = math.max(t0, nowMs - config.liveWindowS * 1000);
     final (sens, gps) = _buf.slice(from, nowMs, from);
-    final params = const AlgoParams().copyWith(wheelbaseM: _ctx().wheelbaseM);
+    final params = AlgoParams.current.copyWith(wheelbaseM: _ctx().wheelbaseM);
     Future<TripResult> job() => config.runInIsolate ? Isolate.run(() => processTrip(sens, gps, params)) : Future.value(processTrip(sens, gps, params));
     job().then((r) {
       _found = r.events.where((e) => e.type == 'pothole').length;
