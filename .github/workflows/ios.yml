@@ -1,8 +1,6 @@
 name: iOS IPA (без подписи)
 on:
-  workflow_dispatch:
-  push:
-    paths: ["app/**", ".github/workflows/ios.yml"]
+  workflow_dispatch:   # только вручную, по слову «IPA»
 jobs:
   ios:
     runs-on: macos-14
