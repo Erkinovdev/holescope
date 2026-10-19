@@ -8,7 +8,7 @@ workflows:
       flutter: stable
       java: 17
       vars:
-        API_BASE: ""   # адрес сервера, например https://api.example.uz
+        API_BASE: "http://95.217.220.168"
     scripts:
       - name: Зависимости
         script: flutter pub get
@@ -22,33 +22,27 @@ workflows:
           - abdukkhak1mov@gmail.com
 
   ios-ipa:
-    name: iOS IPA
+    name: iOS IPA (без подписи, для Sideloadly)
     instance_type: mac_mini_m2
     max_build_duration: 60
     working_directory: app
-    integrations:
-      app_store_connect: HOLESCOPE_ASC   # имя ключа App Store Connect в Codemagic
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: uz.holescope.holescope
       vars:
-        API_BASE: ""
+        API_BASE: "http://95.217.220.168"
     scripts:
       - name: Зависимости
         script: flutter pub get
       - name: Pods
         script: find . -name Podfile -execdir pod install \;
-      - name: Подпись
-        script: xcode-project use-profiles
-      - name: Номер сборки
+      - name: Сборка без подписи
+        script: flutter build ios --release --no-codesign --dart-define=API_BASE=$API_BASE
+      - name: Упаковка в IPA
         script: |
-          BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
-          echo "build=$((BUILD+1))"
-      - name: Сборка IPA
-        script: flutter build ipa --release --dart-define=API_BASE=$API_BASE --export-options-plist=/Users/builder/export_options.plist
+          mkdir -p build/ios/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          (cd build/ios/ipa && zip -qry holescope.ipa Payload && rm -rf Payload)
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/ipa/holescope.ipa

@@ -17,6 +17,7 @@
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <application
+        android:usesCleartextTraffic="true"
         android:label="Holescope"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
