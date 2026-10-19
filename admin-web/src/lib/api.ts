@@ -72,10 +72,28 @@ export interface ClusterEvent {
   explain: { verdict: string; reasons: { ok: boolean; text: string }[] }
 }
 export interface Readiness {
+  types: { counts: Record<string, number>; active: string | null; per_class: number }
   state: 'rules' | 'ready' | 'learned'; title: string; progress: number; steps: string[]; last_training: string | null
   facts: { labels: number; road: number; not_road: number; trips_ready: number; trips_needed: number; labels_needed: number; open_questions: number }
 }
-export interface ClusterDetail extends Cluster { why: string; events: ClusterEvent[]; type_votes: Record<string, number>; complaints: number; quiet: { at: string; speed_kmh: number; device_id: number }[] }
+export interface Taxonomy {
+  items: { key: string; group: string; ru: string; uz: string; road: boolean; type: string; level: string; driver: boolean; hint: string }[]
+  groups: Record<string, { ru: string; uz: string }>
+  road_ratings: Record<string, { cls: string; ru: string; uz: string }>
+  driver_options: string[]
+}
+export interface Analysis {
+  guess: { top: string; ranked: { type: string; name: string; p: number }[]; reasons: string[]; matches_current: boolean }
+  context: { c_hit_rate: number; c_score_cv: number; c_speed_slope: number; c_passes: number; c_devices: number; c_low_speed: number }
+  votes: { label: string; name: string; n: number }[]
+  level: { current: string; score: number; bounds: number[]; calibrated: boolean; text: string }
+  roughness: { cls: string; name: string; ri: number | null; passes: number; devices: number; road: string; road_class: string; surface: string; flags: string[] } | null
+}
+export interface Calibration {
+  levels: { n: number; counts: Record<string, number>; current: number[]; suggested: number[] | null; acc_current: number | null; acc_suggested: number | null; active: boolean; default: number[] }
+  ri: { stats: Record<string, { n: number; median: number | null; p25: number | null; p75: number | null }>; current: number[]; suggested: number[] | null; enough: boolean; warning?: string; names: Record<string, string> }
+}
+export interface ClusterDetail extends Cluster { analysis?: Analysis; why: string; events: ClusterEvent[]; type_votes: Record<string, number>; complaints: number; quiet: { at: string; speed_kmh: number; device_id: number }[] }
 export interface Overview {
   days: number
   kpi: { trips: number; km: number; events: number; clusters_total: number; confirmed: number; fixed: number; candidates: number; devices_active: number; devices_total: number; labels: number }

@@ -9,10 +9,12 @@ import { useAuth } from '../lib/auth'
 import { fmtDate, fmtDateTime, fmtNum, ROUGH_COLORS, TYPE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
 import { Mark, ScanBar } from '../components/Loaders'
+import CalibrationTab from './Calibration'
+import type { Taxonomy } from '../lib/api'
 
-type Tab = 'graph' | 'timeline' | 'queue' | 'uploads' | 'params'
+type Tab = 'graph' | 'timeline' | 'queue' | 'calib' | 'uploads' | 'params'
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'graph', label: '3D-граф' }, { value: 'timeline', label: 'Версии и метрики' }, { value: 'queue', label: 'Очередь разметки' },
+  { value: 'graph', label: '3D-граф' }, { value: 'timeline', label: 'Версии и метрики' }, { value: 'queue', label: 'Очередь разметки' }, { value: 'calib', label: 'Калибровка' },
   { value: 'uploads', label: 'Записи CSV' }, { value: 'params', label: 'Параметры' },
 ]
 
@@ -39,6 +41,7 @@ export default function Brain() {
       {tab === 'graph' && <GraphTab />}
       {tab === 'timeline' && <TimelineTab />}
       {tab === 'queue' && <QueueTab />}
+      {tab === 'calib' && <CalibrationTab />}
       {tab === 'uploads' && <UploadsTab />}
       {tab === 'params' && <ParamsTab />}
     </div>
@@ -147,9 +150,7 @@ function TimelineTab() {
 }
 
 // ───────────────────────── очередь разметки ─────────────────────────
-interface QueueResp { stats: { open: number; answered: number; skipped: number; answered_7d: number; labels: number; by_source: Record<string, number> }; queue: { id: number; priority: number; at: string; speed_kmh: number; peak: number; score: number; type: string; level: string; confidence: number; wave: number[]; cluster: number | null }[]; labels: string[] }
-const LABEL_NAMES: Record<string, string> = { pothole_light: 'яма лёгкая', pothole_mid: 'яма средняя', pothole_deep: 'яма глубокая', bump: 'лежачий', manhole: 'люк', rail: 'рельсы', joint: 'стык', noise: 'шум', handled: 'телефон трогали' }
-
+interface QueueResp { stats: { open: number; answered: number; skipped: number; answered_7d: number; labels: number; by_source: Record<string, number> }; queue: { id: number; priority: number; at: string; speed_kmh: number; peak: number; score: number; type: string; level: string; confidence: number; wave: number[]; cluster: number | null }[]; labels: string[]; taxonomy: Taxonomy }
 function QueueTab() {
   const { can } = useAuth()
   const q = useGet<QueueResp>('/admin/brain/questions', { limit: 24 })
@@ -170,7 +171,16 @@ function QueueTab() {
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted"><Chip tone="amber">приоритет {e.priority}</Chip><span>{Math.round(e.speed_kmh)} км/ч · score {e.score}</span>{e.cluster && <Link className="ml-auto hover:underline" to={`/events?focus=${e.cluster}`}>яма #{e.cluster}</Link>}</div>
               <Wave wave={e.wave} />
               <div className="text-xs text-muted">догадка: {TYPE_NAMES[e.type] ?? e.type}, уверенность {e.confidence.toFixed(2)}</div>
-              {can('labeler') && <div className="flex flex-wrap gap-1.5">{d.labels.map((l) => <Button key={l} small disabled={label.isPending} onClick={() => label.mutate({ event_id: e.id, label: l })}>{LABEL_NAMES[l] ?? l}</Button>)}</div>}
+              {can('labeler') && (
+                <div className="flex flex-col gap-2">
+                  {Object.entries(d.taxonomy.groups).map(([g, info]) => (
+                    <div key={g}>
+                      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">{info.ru}</div>
+                      <div className="flex flex-wrap gap-1.5">{d.taxonomy.items.filter((i) => i.group === g).map((i) => <Button key={i.key} small title={i.hint} disabled={label.isPending} onClick={() => label.mutate({ event_id: e.id, label: i.key })}>{i.ru}</Button>)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           ))}
         </div>
@@ -330,6 +340,10 @@ function ReadinessCard() {
       </div>
       <p className="mb-1 text-sm font-semibold">Что делать дальше</p>
       <ol className="list-decimal pl-5 text-sm text-muted">{d.steps.map((x, i) => <li key={i}>{x}</li>)}</ol>
+      <div className="mt-3 rounded-2xl bg-raised p-3 text-xs">
+        <div className="mb-1 font-semibold">Модель «что это» (люк, лежачий, рельсы, яма…): {d.types.active ? `работает, версия ${d.types.active}` : 'пока решают правила по форме удара'}</div>
+        <div className="flex flex-wrap gap-2">{Object.keys(d.types.counts).length === 0 ? <span className="text-muted">размеченных объектов по типам пока нет</span> : Object.entries(d.types.counts).map(([k, n]) => <Chip key={k} tone={n >= d.types.per_class ? 'smooth' : 'muted'}>{k}: {n}/{d.types.per_class}</Chip>)}</div>
+      </div>
       <p className="mt-3 text-xs text-muted">Разметка: {d.facts.labels} (дорога {d.facts.road} · не дорога {d.facts.not_road}). {d.last_training ?? 'Обучений ещё не было.'}</p>
     </Card>
   )

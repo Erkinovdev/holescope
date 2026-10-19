@@ -7,10 +7,19 @@ import 'api_client.dart';
 import 'device_auth.dart';
 import 'local_db.dart';
 
-enum MarkKind { pothole, deep, bump, manhole, notPothole }
-
-extension MarkKindWire on MarkKind {
-  String get wire => this == MarkKind.notPothole ? 'not_pothole' : name;
+/// Вид отметки для сервера: метка справочника (`pothole_deep`, `manhole_sunk`…), оценка дороги (`road_a`…`road_e`), короткие `pothole`/`deep` или `not_pothole`.
+class MarkKind {
+  const MarkKind(this.wire);
+  final String wire;
+  static const pothole = MarkKind('pothole');
+  static const deep = MarkKind('deep');
+  static const notPothole = MarkKind('not_pothole');
+  factory MarkKind.fromKey(String key) => MarkKind(key);
+  bool get isRating => wire.startsWith('road_');
+  @override
+  bool operator ==(Object other) => other is MarkKind && other.wire == wire;
+  @override
+  int get hashCode => wire.hashCode;
 }
 
 /// Точка GPS, по которой привязываем отметку.

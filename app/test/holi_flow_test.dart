@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:holescope/services/ahead_warner.dart';
 import 'package:holescope/services/announcer.dart';
@@ -45,22 +47,52 @@ class FakeSession implements HoliSession {
   Future<void> end() async => ends++;
 }
 
-/// Подставной микрофон: на каждое прослушивание отдаёт следующий заготовленный ответ ('' = тишина).
+/// Подставной микрофон: на каждое прослушивание отдаёт следующий заготовленный ответ (пусто = тишина). [prepareFail] — как будто нет разрешения.
 class FakeSpeech implements SpeechEngine {
-  FakeSpeech(this.answers);
+  FakeSpeech(this.answers, {this.prepareFail});
   final List<String> answers;
+  final SpeechOutcome? prepareFail;
+  int listens = 0, stops = 0;
   @override
-  bool get available => true;
+  Future<SpeechOutcome?> prepare() async => prepareFail;
   @override
-  Future<bool> init() async => true;
-  @override
-  Future<void> listen({required String lang, required Duration listenFor, required void Function(String text, bool isFinal) onText}) async {
+  Future<SpeechOutcome> listenOnce({required String lang, Duration maxDuration = const Duration(seconds: 25), Duration silenceTimeout = const Duration(seconds: 2), Duration noSpeechTimeout = const Duration(seconds: 10), void Function(String text)? onPartial}) async {
+    listens++;
     final a = answers.isEmpty ? '' : answers.removeAt(0);
-    if (a.isNotEmpty) onText(a, true);
+    if (a.isNotEmpty) onPartial?.call(a);
+    return SpeechOutcome(text: a, engine: 'fake', error: a.isEmpty ? SpeechErrorKind.noSpeech : SpeechErrorKind.none);
   }
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stops++;
+  @override
+  Future<void> cancel() async {}
+}
+
+class _FailingSpeech extends FakeSpeech {
+  _FailingSpeech(this.fail) : super([]);
+  final SpeechOutcome fail;
+  @override
+  Future<SpeechOutcome> listenOnce({required String lang, Duration maxDuration = const Duration(seconds: 25), Duration silenceTimeout = const Duration(seconds: 2), Duration noSpeechTimeout = const Duration(seconds: 10), void Function(String text)? onPartial}) async => fail;
+}
+
+/// Слушает, пока не вызовут stop().
+class _BlockingSpeech extends FakeSpeech {
+  _BlockingSpeech() : super([]);
+  Completer<void>? _c;
+  @override
+  Future<SpeechOutcome> listenOnce({required String lang, Duration maxDuration = const Duration(seconds: 25), Duration silenceTimeout = const Duration(seconds: 2), Duration noSpeechTimeout = const Duration(seconds: 10), void Function(String text)? onPartial}) async {
+    _c = Completer<void>();
+    onPartial?.call('яма');
+    await _c!.future.timeout(const Duration(seconds: 3), onTimeout: () {});
+    return const SpeechOutcome(text: 'яма', engine: 'fake');
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+    if (_c != null && !_c!.isCompleted) _c!.complete();
+  }
 }
 
 class FakeApi extends ApiClient {
@@ -79,6 +111,7 @@ class FakeAuth extends DeviceAuth {
 const _keys = [
   'listening', 'wake_yes', 'wake_listen', 'mark_pothole', 'mark_deep', 'mark_bump', 'mark_manhole', 'mark_cancel', 'mark_cancel_none', 'thanks', 'ask_confirm',
   'confirm_yes', 'confirm_no', 'no_answer', 'ahead_deep', 'ahead_bump', 'repeat', 'unknown', 'trip_done', 'ahead_pothole_100', 'ahead_pothole_150',
+  'mark_pothole_deep', 'mark_manhole_sunk', 'rate_road_d', 'help', 'ok_end', 'err_mic', 'err_speech', 'err_net', 'mark_not_pothole',
 ];
 
 Map<String, HoliEntry> _phrases() => {for (final k in _keys) k: HoliEntry(key: k, ru: 'ru $k', uz: 'uz $k', file: k)};
@@ -136,6 +169,22 @@ void main() {
       }
       await voice.idle;
       expect(player.played.length, lessThanOrEqualTo(4));
+    });
+
+    test('в диалоге аудио-сессия не отпускается между фразами (hold/release)', () async {
+      voice.hold();
+      await voice.play(HoliPhrase.wakeListen);
+      expect(session.ends, 0, reason: 'сессия держится, пока идёт диалог');
+      await voice.play(HoliPhrase.thanks);
+      expect(session.begins, 1);
+      voice.release();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(session.ends, 1);
+    });
+
+    test('hasKey знает только записанные фразы', () {
+      expect(voice.hasKey('mark_pothole_deep'), isTrue);
+      expect(voice.hasKey('mark_nonexistent'), isFalse);
     });
 
     test('неизвестный ключ молча пропускается', () async {
@@ -204,13 +253,13 @@ void main() {
       final c = make(['глубокая яма']);
       await c.activate(byWake: true);
       expect(player.played.first, _ru('wake_yes'));
-      expect(player.played.last, _ru('mark_deep'));
+      expect(player.played.last, _ru('mark_pothole_deep'));
       await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(api.sent.single['kind'], 'deep');
+      expect(api.sent.single['kind'], 'pothole_deep');
     });
 
     test('«отмена» убирает последнюю отметку до отправки', () async {
-      final c = make(['люк', 'отмена']);
+      final c = make(['люк', '', 'отмена', '']);
       await c.activate();
       await c.activate();
       expect(player.played.last, _ru('mark_cancel'));
@@ -284,6 +333,90 @@ void main() {
       expect(c.canAsk(), isTrue);
     });
 
+    test('несколько команд подряд в одном диалоге, потом тишина — диалог закрывается сам', () async {
+      final c = make(['яма', 'просевший люк', '']);
+      await c.activate();
+      expect(player.played, [_ru('wake_listen'), _ru('mark_pothole'), _ru('mark_manhole_sunk')]);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.map((e) => e['kind']), ['pothole', 'manhole_sunk']);
+      expect(c.busy, isFalse);
+    });
+
+    test('оценка дороги: «дорога плохая» → отметка road_d', () async {
+      final c = make(['дорога плохая']);
+      await c.activate();
+      expect(player.played.last, _ru('rate_road_d'));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.single['kind'], 'road_d');
+    });
+
+    test('«это не яма» → отметка not_pothole', () async {
+      final c = make(['это не яма']);
+      await c.activate();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.single['kind'], 'not_pothole');
+    });
+
+    test('«спасибо» заканчивает диалог', () async {
+      final c = make(['спасибо', 'яма']);
+      await c.activate();
+      expect(player.played.last, _ru('ok_end'));
+      expect(marks.pending, 0);
+    });
+
+    test('помощь: Холи перечисляет команды', () async {
+      final c = make(['что ты умеешь']);
+      await c.activate();
+      expect(player.played, contains(_ru('help')));
+    });
+
+    test('нет разрешения на микрофон: причина на экране и голосом, не молча', () async {
+      api = FakeApi();
+      marks = MarkService(db: LocalDb.memory(), api: api, auth: FakeAuth(), now: () => now);
+      final c = HoliController(
+        voice: voice,
+        speech: FakeSpeech([], prepareFail: const SpeechOutcome(error: SpeechErrorKind.micBlocked, engine: 'device', detail: 'заблокирован')),
+        marks: marks,
+        fixAt: (t) => fix,
+        lang: () => lang,
+        now: () => now,
+      );
+      await c.activate();
+      expect(player.played, [_ru('err_mic')]);
+      expect(c.ui.value.error, SpeechErrorKind.micBlocked);
+      c.clearError();
+      expect(c.ui.value.error, isNull);
+    });
+
+    test('сбой сети при распознавании — голос и причина', () async {
+      final sp = _FailingSpeech(const SpeechOutcome(error: SpeechErrorKind.network, engine: 'cloud', detail: 'нет сети'));
+      final c = HoliController(voice: voice, speech: sp, marks: MarkService(db: LocalDb.memory(), api: FakeApi(), auth: FakeAuth()), fixAt: (t) => fix, lang: () => lang, now: () => now);
+      await c.activate();
+      expect(player.played.last, _ru('err_net'));
+      expect(c.ui.value.error, SpeechErrorKind.network);
+    });
+
+    test('кнопка во время прослушивания заканчивает фразу, во время речи — перебивает', () async {
+      final sp = _BlockingSpeech();
+      final c = HoliController(voice: voice, speech: sp, marks: MarkService(db: LocalDb.memory(), api: FakeApi(), auth: FakeAuth()), fixAt: (t) => fix, lang: () => lang, now: () => now);
+      final run = c.activate();
+      for (var i = 0; i < 100 && c.ui.value.status != HoliStatus.listening; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(c.ui.value.status, HoliStatus.listening);
+      await c.onButton();
+      expect(sp.stops, greaterThan(0));
+      await run;
+    });
+
+    test('вызов по кнопке, когда занято: не запускает второй диалог', () async {
+      final c = make(['яма', '']);
+      final a = c.activate();
+      await c.activate();
+      await a;
+      expect(player.played.where((p) => p == _ru('wake_listen')).length, 1);
+    });
+
     test('экран: статус и услышанный текст', () async {
       final c = make(['яма']);
       final seen = <String>[];
@@ -300,9 +433,9 @@ void main() {
       final api = FakeApi();
       final m = MarkService(db: LocalDb.memory(), api: api, auth: FakeAuth(), holdFor: const Duration(milliseconds: 20));
       final fix = MarkFix(DateTime.now(), 41.3, 69.2, null);
-      m.add(MarkKind.bump, fix);
+      m.add(const MarkKind('bump'), fix);
       expect(m.cancelLast(), isTrue);
-      m.add(MarkKind.manhole, fix);
+      m.add(const MarkKind('manhole'), fix);
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(api.sent.map((e) => e['kind']), ['manhole']);
       expect(m.cancelLast(), isFalse);

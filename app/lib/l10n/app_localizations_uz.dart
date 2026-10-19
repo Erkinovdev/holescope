@@ -671,7 +671,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get holiHint =>
-      'Ayting: o‘ra, chuqur o‘ra, yotiq politsiyachi, lyuk yoki bekor';
+      'Ayting: o‘ra, chuqur o‘ra, yotiq politsiyachi, lyuk, relslar yoki yo‘l bahosi: tekis, yaxshi, yomon, buzilgan';
 
   @override
   String get setHoliAsk => 'Zarbadan keyin Xoli «ha/yo‘q» deb so‘raydi';
@@ -685,4 +685,130 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get loaderScanning => 'Yo‘lni skanerlaymiz…';
+
+  @override
+  String get holiErrMic => 'Mikrofonga ruxsat yo‘q';
+
+  @override
+  String get holiErrMicBlocked => 'Mikrofon telefon sozlamalarida taqiqlangan';
+
+  @override
+  String get holiErrUnavailable => 'Telefonda nutqni aniqlash xizmati yo‘q';
+
+  @override
+  String get holiErrLang => 'Telefon o‘zbek tilini aniqlay olmaydi';
+
+  @override
+  String get holiErrBusy => 'Aniqlash band, qayta urinib ko‘ring';
+
+  @override
+  String get holiErrNet => 'Server bilan aloqa yo‘q';
+
+  @override
+  String get holiErrTimeout => 'Aniqlash ishga tushmadi';
+
+  @override
+  String get holiErrFailed => 'Nutqni aniqlab bo‘lmadi';
+
+  @override
+  String get holiOpenSettings => 'Sozlamalarni ochish';
+
+  @override
+  String get holiCheck => 'Ovozni tekshirish';
+
+  @override
+  String get holiBtnDone => 'Tayyor';
+
+  @override
+  String get holiBtnSkip => 'O‘tkazib yuborish';
+
+  @override
+  String get holiBtnCancel => 'Bekor qilish';
+
+  @override
+  String get setHoliEngine => 'Nutqni aniqlash';
+
+  @override
+  String get holiEngineAuto => 'Avtomatik';
+
+  @override
+  String get holiEngineDevice => 'Telefonda';
+
+  @override
+  String get holiEngineCloud => 'Serverda (o‘zbek tili uchun yaxshiroq)';
+
+  @override
+  String get vcTitle => 'Ovozni tekshirish';
+
+  @override
+  String get vcMic => 'Mikrofon';
+
+  @override
+  String get vcMicOk => 'Ruxsat bor';
+
+  @override
+  String get vcMicNo => 'Ruxsat yo‘q';
+
+  @override
+  String get vcAllow => 'Ruxsat berish';
+
+  @override
+  String get vcSpeech => 'Telefonda aniqlash';
+
+  @override
+  String get vcSpeechOk => 'Ishlayapti';
+
+  @override
+  String get vcSpeechNo => 'Mavjud emas';
+
+  @override
+  String get vcSound => 'Xoli ovozi';
+
+  @override
+  String get vcPlay => 'Ovozni tekshirish';
+
+  @override
+  String get vcListen => 'Aniqlashni tekshirish';
+
+  @override
+  String get vcListenHint => 'Bosing va ayting: «chuqur o‘ra» yoki «o‘ra»';
+
+  @override
+  String get vcCloud => 'Serverni tekshirish';
+
+  @override
+  String get vcHeard => 'Eshitildi';
+
+  @override
+  String get vcEngine => 'Aniqladi';
+
+  @override
+  String get vcTime => 'Vaqt';
+
+  @override
+  String get vcLog => 'Jurnal';
+
+  @override
+  String get vcCopy => 'Jurnalni nusxalash';
+
+  @override
+  String get vcCopied => 'Jurnal nusxalandi';
+
+  @override
+  String get vcCommand => 'Buyruq';
+
+  @override
+  String get vcNone => 'buyruq topilmadi';
+
+  @override
+  String get vcError => 'Xato';
+
+  @override
+  String get vcWorking => 'Tinglayapman…';
+
+  @override
+  String get optMore => 'Boshqa variantlar';
+
+  @override
+  String get optLess => 'Yig‘ish';
 }

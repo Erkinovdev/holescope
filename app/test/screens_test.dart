@@ -20,7 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 const routes = [
   '/map', '/drive', '/streets', '/profile', '/my-map', '/pothole/1', '/warning', '/settings', '/complaint/1', '/complaint/status/1',
   '/route', '/notifications', '/city', '/challenges', '/weekly', '/vehicle', '/question', '/trip-summary', '/mount', '/role',
-  '/permissions', '/onboarding/role', '/onboarding/mount', '/trips',
+  '/permissions', '/onboarding/role', '/onboarding/mount', '/trips', '/voice-check',
 ];
 
 Future<void> _loadInter() async {

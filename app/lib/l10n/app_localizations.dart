@@ -1307,7 +1307,7 @@ abstract class AppLocalizations {
   /// No description provided for @holiHint.
   ///
   /// In ru, this message translates to:
-  /// **'Скажите: яма, глубокая яма, лежачий, люк или отмена'**
+  /// **'Скажите: яма, глубокая яма, лежачий, люк, рельсы, переезд — или оценку дороги: ровная, хорошая, плохая, разбитая'**
   String get holiHint;
 
   /// No description provided for @setHoliAsk.
@@ -1333,6 +1333,258 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сканируем дорогу…'**
   String get loaderScanning;
+
+  /// No description provided for @holiErrMic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет доступа к микрофону'**
+  String get holiErrMic;
+
+  /// No description provided for @holiErrMicBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Микрофон запрещён в настройках телефона'**
+  String get holiErrMicBlocked;
+
+  /// No description provided for @holiErrUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'На телефоне нет службы распознавания речи'**
+  String get holiErrUnavailable;
+
+  /// No description provided for @holiErrLang.
+  ///
+  /// In ru, this message translates to:
+  /// **'Узбекский язык не поддерживается распознаванием телефона'**
+  String get holiErrLang;
+
+  /// No description provided for @holiErrBusy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавание занято, попробуйте ещё раз'**
+  String get holiErrBusy;
+
+  /// No description provided for @holiErrNet.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет связи с сервером'**
+  String get holiErrNet;
+
+  /// No description provided for @holiErrTimeout.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавание не запустилось'**
+  String get holiErrTimeout;
+
+  /// No description provided for @holiErrFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось распознать речь'**
+  String get holiErrFailed;
+
+  /// No description provided for @holiOpenSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть настройки'**
+  String get holiOpenSettings;
+
+  /// No description provided for @holiCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка голоса'**
+  String get holiCheck;
+
+  /// No description provided for @holiBtnDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово'**
+  String get holiBtnDone;
+
+  /// No description provided for @holiBtnSkip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропустить'**
+  String get holiBtnSkip;
+
+  /// No description provided for @holiBtnCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get holiBtnCancel;
+
+  /// No description provided for @setHoliEngine.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавание речи'**
+  String get setHoliEngine;
+
+  /// No description provided for @holiEngineAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматически'**
+  String get holiEngineAuto;
+
+  /// No description provided for @holiEngineDevice.
+  ///
+  /// In ru, this message translates to:
+  /// **'На телефоне'**
+  String get holiEngineDevice;
+
+  /// No description provided for @holiEngineCloud.
+  ///
+  /// In ru, this message translates to:
+  /// **'На сервере (лучше для узбекского)'**
+  String get holiEngineCloud;
+
+  /// No description provided for @vcTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка голоса'**
+  String get vcTitle;
+
+  /// No description provided for @vcMic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Микрофон'**
+  String get vcMic;
+
+  /// No description provided for @vcMicOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступ есть'**
+  String get vcMicOk;
+
+  /// No description provided for @vcMicNo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет доступа'**
+  String get vcMicNo;
+
+  /// No description provided for @vcAllow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешить'**
+  String get vcAllow;
+
+  /// No description provided for @vcSpeech.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавание на телефоне'**
+  String get vcSpeech;
+
+  /// No description provided for @vcSpeechOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Работает'**
+  String get vcSpeechOk;
+
+  /// No description provided for @vcSpeechNo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Недоступно'**
+  String get vcSpeechNo;
+
+  /// No description provided for @vcSound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голос Холи'**
+  String get vcSound;
+
+  /// No description provided for @vcPlay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить звук'**
+  String get vcPlay;
+
+  /// No description provided for @vcListen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить распознавание'**
+  String get vcListen;
+
+  /// No description provided for @vcListenHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите и скажите: «глубокая яма» или «яма»'**
+  String get vcListenHint;
+
+  /// No description provided for @vcCloud.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить сервер'**
+  String get vcCloud;
+
+  /// No description provided for @vcHeard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Услышано'**
+  String get vcHeard;
+
+  /// No description provided for @vcEngine.
+  ///
+  /// In ru, this message translates to:
+  /// **'Распознавал'**
+  String get vcEngine;
+
+  /// No description provided for @vcTime.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время'**
+  String get vcTime;
+
+  /// No description provided for @vcLog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Журнал'**
+  String get vcLog;
+
+  /// No description provided for @vcCopy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать журнал'**
+  String get vcCopy;
+
+  /// No description provided for @vcCopied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Журнал скопирован'**
+  String get vcCopied;
+
+  /// No description provided for @vcCommand.
+  ///
+  /// In ru, this message translates to:
+  /// **'Команда'**
+  String get vcCommand;
+
+  /// No description provided for @vcNone.
+  ///
+  /// In ru, this message translates to:
+  /// **'команда не найдена'**
+  String get vcNone;
+
+  /// No description provided for @vcError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка'**
+  String get vcError;
+
+  /// No description provided for @vcWorking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слушаю…'**
+  String get vcWorking;
+
+  /// No description provided for @optMore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Другие варианты'**
+  String get optMore;
+
+  /// No description provided for @optLess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть'**
+  String get optLess;
 }
 
 class _AppLocalizationsDelegate

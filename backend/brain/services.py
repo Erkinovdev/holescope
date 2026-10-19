@@ -107,6 +107,7 @@ def ingest_trip(device: Device, payload: dict, validate: bool = True) -> Trip:
     idx = get_index() if use_map else None
     gain = device.calib_gain or 1.0
     av, model = inference.active_model() if use_map else (None, None)
+    lvl_bounds = road_stats.active_level_bounds()  # None — уровень остаётся таким, как посчитал телефон
     if use_map:
         for e in events:
             if e.get("type") in ("touch", "noise"):
@@ -122,7 +123,7 @@ def ingest_trip(device: Device, payload: dict, validate: bool = True) -> Trip:
             hd = None if e.get("heading") is None or e["heading"] != e["heading"] else e["heading"]
             ev = RoadEvent.objects.create(
                 trip=trip, device=device, t_offset=e["t"], at=started + timedelta(seconds=e["t"]), lat=e["lat"], lon=e["lon"], heading=hd,
-                speed_kmh=e["speed_kmh"], type=e.get("type", "pothole"), level=e.get("level") or "", confidence=conf,
+                speed_kmh=e["speed_kmh"], type=e.get("type", "pothole"), level=(road_stats.level_for(round(e["score"] * gain, 3), lvl_bounds) if lvl_bounds and e.get("type", "pothole") == "pothole" else e.get("level") or ""), confidence=conf,
                 peak=e["peak"], score=round(e["score"] * gain, 3), features=_clean(feats), wave=_clean(e.get("wave", [])),
                 algo_version=ver, low_conf=e.get("low_conf", False))
             ev.cluster = attach_to_cluster(ev)

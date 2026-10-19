@@ -46,7 +46,8 @@ class EventCluster(models.Model):
     STATUS = [("candidate", "кандидат"), ("confirmed", "подтверждена"), ("complaint", "жалоба подана"),
               ("fixed", "заделана"), ("false", "ложная")]
     TYPES = [("pothole", "яма / неровность"), ("bump", "лежачий"), ("manhole", "люк"), ("joint", "стык"),
-             ("rail_tram", "трамвайные рельсы"), ("rail_train", "ж/д переезд"), ("rough_patch", "гребёнка"), ("rutting", "колейность")]
+             ("rail_tram", "трамвайные рельсы"), ("rail_train", "ж/д переезд"), ("rough_patch", "гребёнка"), ("rutting", "колейность"),
+             ("broken", "разбитый участок"), ("patch", "заплатка"), ("crack", "трещина"), ("cobble", "брусчатка")]
     lat = models.FloatField(); lon = models.FloatField()
     heading = models.FloatField(null=True, blank=True)
     segment = models.ForeignKey(Segment, null=True, blank=True, on_delete=models.SET_NULL, related_name="clusters")
@@ -149,19 +150,30 @@ class ClusterReport(models.Model):
 class DriverMark(models.Model):
     """Голосовая/ручная отметка водителя («яма», «люк», «это не яма»). Привязывается к событию алгоритма этого же устройства
     (±35 м, ±90 с) и становится разметкой для обучения; если алгоритм яму не нашёл — создаёт/подкрепляет кандидата."""
-    KINDS = [("pothole", "яма"), ("deep", "глубокая яма"), ("bump", "лежачий"), ("manhole", "люк"), ("not_pothole", "это не яма")]
+    # kind: ключ из brain.taxonomy («pothole_deep», «manhole_sunk»…), короткие «pothole»/«deep», «not_pothole» или оценка дороги «road_a…road_e»
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="marks")
     client_id = models.CharField(max_length=64)
-    kind = models.CharField(max_length=12, choices=KINDS)
+    kind = models.CharField(max_length=20)
     lat = models.FloatField()
     lon = models.FloatField()
     heading = models.FloatField(null=True, blank=True)
     at = models.DateTimeField()
     created = models.DateTimeField(auto_now_add=True)
     applied = models.BooleanField(default=False)
+    ri = models.FloatField(null=True, blank=True)                   # для оценки дороги: медианный индекс ровности участка, который только что проехали
     event = models.ForeignKey(RoadEvent, null=True, blank=True, on_delete=models.SET_NULL, related_name="marks")
     cluster = models.ForeignKey(EventCluster, null=True, blank=True, on_delete=models.SET_NULL, related_name="marks")
 
     class Meta:
         unique_together = [("device", "client_id")]
         indexes = [models.Index(fields=["applied", "created"])]
+
+
+class VoiceUsage(models.Model):
+    """Сколько раз устройство за сутки просило серверное распознавание речи (защита от злоупотреблений)."""
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="voice_usage")
+    day = models.DateField()
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = [("device", "day")]

@@ -31,6 +31,25 @@ P = [  # key, ru, uz
     ("km_rough", "Последний километр разбитый", "Oxirgi kilometr buzilgan"),
     ("trip_done", "Поездка записана. Хорошей дороги", "Safar yozildi. Yo'lingiz ravon bo'lsin"),
 ]
+P += [
+    ("err_mic", "Нет доступа к микрофону. Разрешите его в настройках", "Mikrofonga ruxsat yo'q. Sozlamalarda ruxsat bering"),
+    ("err_speech", "Не получается включить распознавание речи", "Nutqni aniqlashni yoqib bo'lmadi"),
+    ("err_net", "Нет связи с сервером, команду не услышала", "Server bilan aloqa yo'q, buyruqni eshitmadim"),
+    ("ok_end", "Хорошо", "Yaxshi"),
+    ("help", "Скажите: яма, глубокая яма, лежачий, люк, рельсы или переезд. Оценить дорогу: ровная, хорошая, плохая или разбитая. Чтобы убрать отметку, скажите: отмена",
+     "Ayting: o'ra, chuqur o'ra, yotiq politsiyachi, lyuk, relslar yoki o'tish joyi. Yo'lni baholash: tekis, yaxshi, yomon yoki buzilgan. Belgini o'chirish uchun: bekor"),
+    ("mark_not_pothole", "Понятно, это не яма", "Tushunarli, bu o'ra emas"),
+]
+# отметки по всем вариантам справочника сервера (backend/brain/taxonomy.py) и оценки дороги
+import importlib.util
+_spec = importlib.util.spec_from_file_location("taxonomy", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "backend", "brain", "taxonomy.py"))
+_tx = importlib.util.module_from_spec(_spec); sys.modules["taxonomy"] = _tx; _spec.loader.exec_module(_tx)
+_have = {k for k, _, _ in P}
+for it in _tx.ITEMS:
+    if f"mark_{it.key}" not in _have:
+        P.append((f"mark_{it.key}", f"Отметила: {it.ru.lower()}", f"{it.uz} belgilandi"))
+for k, (cls, ru, uz) in _tx.ROAD_RATINGS.items():
+    P.append((f"rate_{k}", f"Дорога {ru.lower()}, записала", f"Yo'l {uz.lower()}, yozib oldim"))
 for m, (ru, uz) in DIST.items():  # фразы с расстоянием: сервис подбирает ближайшее значение
     P.append((f"ahead_pothole_{m}", f"Впереди яма, {ru} метров" if m not in (100,) else "Впереди яма, сто метров", f"Oldinda o'ra, {uz} metr"))
     P.append((f"ahead_rough_{m}", f"Впереди разбитый участок, {ru} метров", f"Oldinda yo'l buzilgan, {uz} metr"))

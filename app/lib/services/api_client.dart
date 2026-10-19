@@ -192,6 +192,17 @@ class ApiClient {
 
   Future<void> sendMarks(List<Map<String, dynamic>> marks) => _run(() => _dio.post('/api/v1/marks', data: {'marks': marks}, options: _auth), (_) {});
 
+  /// Распознавание речи на сервере: короткий WAV → текст.
+  Future<String> transcribe(File wav, String lang) => _run(
+        () async => _dio.post('/api/v1/voice/transcribe',
+            data: FormData.fromMap({'file': await MultipartFile.fromFile(wav.path, filename: 'speech.wav'), 'lang': lang}),
+            options: Options(headers: {if (token != null) 'X-Device-Token': token}, sendTimeout: const Duration(seconds: 20), receiveTimeout: const Duration(seconds: 25))),
+        (d) => (d['text'] as String?) ?? '',
+      );
+
+  /// Варианты ответа «что это было?» с названиями ru/uz и группами.
+  Future<Map<String, dynamic>> taxonomy() => _run(() => _dio.get('/api/v1/taxonomy'), (d) => Map<String, dynamic>.from(d as Map));
+
   Future<Map<String, dynamic>> algoParams() => _run(() => _dio.get('/api/v1/algo/params'), (d) => Map<String, dynamic>.from(d as Map));
 
   Future<void> patchVehicle(Map<String, dynamic> body) => _run(() => _dio.patch('/api/v1/me/vehicle', data: body, options: _auth), (_) {});

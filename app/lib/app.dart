@@ -13,6 +13,7 @@ import 'package:holescope/features/splash.dart';
 import 'package:holescope/l10n/app_localizations.dart';
 import 'package:holescope/services/permissions.dart';
 import 'package:holescope/services/providers.dart';
+import 'package:holescope/voice/voice_check_screen.dart';
 
 final _root = GlobalKey<NavigatorState>();
 
@@ -38,6 +39,7 @@ GoRouter buildRouter({String initial = '/splash'}) => GoRouter(
         GoRoute(path: '/pothole/:id', builder: (_, s) => PotholeScreen(id: int.tryParse(s.pathParameters['id']!) ?? 0)),
         GoRoute(path: '/warning', builder: (_, __) => const WarningScreen()),
         GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+        GoRoute(path: '/voice-check', builder: (_, __) => const VoiceCheckScreen()),
         GoRoute(path: '/complaint/:cid', builder: (_, s) => ComplaintScreen(clusterId: int.tryParse(s.pathParameters['cid']!) ?? 0)),
         GoRoute(path: '/complaint/status/:id', builder: (_, s) => ComplaintStatusScreen(id: int.tryParse(s.pathParameters['id']!) ?? 0)),
         GoRoute(path: '/route', builder: (_, __) => const RouteChoiceScreen()),

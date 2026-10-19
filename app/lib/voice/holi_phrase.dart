@@ -21,6 +21,12 @@ enum HoliPhrase {
   kmSmooth('km_smooth'),
   kmRough('km_rough'),
   tripDone('trip_done'),
+  errMic('err_mic'),
+  errSpeech('err_speech'),
+  errNet('err_net'),
+  okEnd('ok_end'),
+  help('help'),
+  notPothole('mark_not_pothole'),
 
   /// Фразы с расстоянием: реальный ключ — `ahead_pothole_<метры>`, см. [distanceKey].
   aheadPothole('ahead_pothole'),

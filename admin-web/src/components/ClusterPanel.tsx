@@ -4,6 +4,7 @@ import { api, type Cluster, type ClusterDetail } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { ago, fmtDateTime, LEVEL_NAMES, LEVEL_TONE, STATUS_NAMES, STATUS_TONE, TYPE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
+import { AnalysisBlock, ClusterLabeler } from './Analysis'
 import { Wave } from './Charts'
 import { CardSkeleton } from './Loaders'
 import { Button, Chip, ErrorBox, Field, Input, KV, Select } from './ui'
@@ -44,6 +45,8 @@ export default function ClusterPanel({ id, onChanged, onMerge }: { id: number; o
         ['Жалоб', c.complaints],
         ['Голоса водителей', Object.keys(c.type_votes ?? {}).length ? Object.entries(c.type_votes).map(([k, v]) => `${k}: ${v}`).join(', ') : '—'],
       ]} />
+      {c.analysis && <AnalysisBlock a={c.analysis} currentType={c.type} />}
+      <ClusterLabeler eventId={c.events[0]?.id ?? null} />
       {edit && (
         <div className="flex flex-col gap-3 rounded-2xl bg-raised p-4">
           <div className="grid grid-cols-2 gap-3">

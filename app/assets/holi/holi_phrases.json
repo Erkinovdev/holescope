@@ -126,6 +126,198 @@
   "file": "trip_done"
  },
  {
+  "key": "err_mic",
+  "ru": "Нет доступа к микрофону. Разрешите его в настройках",
+  "uz": "Mikrofonga ruxsat yo'q. Sozlamalarda ruxsat bering",
+  "file": "err_mic"
+ },
+ {
+  "key": "err_speech",
+  "ru": "Не получается включить распознавание речи",
+  "uz": "Nutqni aniqlashni yoqib bo'lmadi",
+  "file": "err_speech"
+ },
+ {
+  "key": "err_net",
+  "ru": "Нет связи с сервером, команду не услышала",
+  "uz": "Server bilan aloqa yo'q, buyruqni eshitmadim",
+  "file": "err_net"
+ },
+ {
+  "key": "ok_end",
+  "ru": "Хорошо",
+  "uz": "Yaxshi",
+  "file": "ok_end"
+ },
+ {
+  "key": "help",
+  "ru": "Скажите: яма, глубокая яма, лежачий, люк, рельсы или переезд. Оценить дорогу: ровная, хорошая, плохая или разбитая. Чтобы убрать отметку, скажите: отмена",
+  "uz": "Ayting: o'ra, chuqur o'ra, yotiq politsiyachi, lyuk, relslar yoki o'tish joyi. Yo'lni baholash: tekis, yaxshi, yomon yoki buzilgan. Belgini o'chirish uchun: bekor",
+  "file": "help"
+ },
+ {
+  "key": "mark_not_pothole",
+  "ru": "Понятно, это не яма",
+  "uz": "Tushunarli, bu o'ra emas",
+  "file": "mark_not_pothole"
+ },
+ {
+  "key": "mark_pothole_light",
+  "ru": "Отметила: мелкая яма",
+  "uz": "Sayoz o‘ra belgilandi",
+  "file": "mark_pothole_light"
+ },
+ {
+  "key": "mark_pothole_mid",
+  "ru": "Отметила: яма средняя",
+  "uz": "O‘rtacha o‘ra belgilandi",
+  "file": "mark_pothole_mid"
+ },
+ {
+  "key": "mark_pothole_deep",
+  "ru": "Отметила: глубокая яма",
+  "uz": "Chuqur o‘ra belgilandi",
+  "file": "mark_pothole_deep"
+ },
+ {
+  "key": "mark_pothole_danger",
+  "ru": "Отметила: опасная яма",
+  "uz": "Xavfli o‘ra belgilandi",
+  "file": "mark_pothole_danger"
+ },
+ {
+  "key": "mark_broken",
+  "ru": "Отметила: разбитый участок (россыпь ям)",
+  "uz": "Buzilgan qism (ko‘p o‘ralar) belgilandi",
+  "file": "mark_broken"
+ },
+ {
+  "key": "mark_patch",
+  "ru": "Отметила: заплатка (ямочный ремонт)",
+  "uz": "Yamoq (ta’mirlangan joy) belgilandi",
+  "file": "mark_patch"
+ },
+ {
+  "key": "mark_crack",
+  "ru": "Отметила: трещина / разлом",
+  "uz": "Yoriq / darz belgilandi",
+  "file": "mark_crack"
+ },
+ {
+  "key": "mark_bump_low",
+  "ru": "Отметила: лежачий пологий",
+  "uz": "Yotiq politsiyachi (past) belgilandi",
+  "file": "mark_bump_low"
+ },
+ {
+  "key": "mark_bump_high",
+  "ru": "Отметила: лежачий крутой",
+  "uz": "Yotiq politsiyachi (baland) belgilandi",
+  "file": "mark_bump_high"
+ },
+ {
+  "key": "mark_manhole_sunk",
+  "ru": "Отметила: люк просел",
+  "uz": "Lyuk cho‘kkan belgilandi",
+  "file": "mark_manhole_sunk"
+ },
+ {
+  "key": "mark_manhole_raised",
+  "ru": "Отметила: люк выступает",
+  "uz": "Lyuk ko‘tarilib turibdi belgilandi",
+  "file": "mark_manhole_raised"
+ },
+ {
+  "key": "mark_rail_tram",
+  "ru": "Отметила: трамвайные рельсы",
+  "uz": "Tramvay relslari belgilandi",
+  "file": "mark_rail_tram"
+ },
+ {
+  "key": "mark_rail_train",
+  "ru": "Отметила: ж/д переезд",
+  "uz": "Temir yo‘l o‘tish joyi belgilandi",
+  "file": "mark_rail_train"
+ },
+ {
+  "key": "mark_joint",
+  "ru": "Отметила: стык плит / шов",
+  "uz": "Plita tutashuvi / chok belgilandi",
+  "file": "mark_joint"
+ },
+ {
+  "key": "mark_washboard",
+  "ru": "Отметила: волнистость (гребёнка)",
+  "uz": "To‘lqinsimon yo‘l belgilandi",
+  "file": "mark_washboard"
+ },
+ {
+  "key": "mark_rutting",
+  "ru": "Отметила: колея",
+  "uz": "Izlar (koleya) belgilandi",
+  "file": "mark_rutting"
+ },
+ {
+  "key": "mark_cobble",
+  "ru": "Отметила: брусчатка / плитка",
+  "uz": "Bruschatka / plitka belgilandi",
+  "file": "mark_cobble"
+ },
+ {
+  "key": "mark_curb",
+  "ru": "Отметила: бордюр / съезд",
+  "uz": "Bordyur / tushish joyi belgilandi",
+  "file": "mark_curb"
+ },
+ {
+  "key": "mark_braking",
+  "ru": "Отметила: резкое торможение / разгон",
+  "uz": "Keskin tormozlash / tezlashish belgilandi",
+  "file": "mark_braking"
+ },
+ {
+  "key": "mark_handled",
+  "ru": "Отметила: телефон трогали / упал",
+  "uz": "Telefonga tegildi / tushib ketdi belgilandi",
+  "file": "mark_handled"
+ },
+ {
+  "key": "mark_noise",
+  "ru": "Отметила: ничего особенного",
+  "uz": "Alohida narsa yo‘q belgilandi",
+  "file": "mark_noise"
+ },
+ {
+  "key": "rate_road_a",
+  "ru": "Дорога ровная, записала",
+  "uz": "Yo'l tekis, yozib oldim",
+  "file": "rate_road_a"
+ },
+ {
+  "key": "rate_road_b",
+  "ru": "Дорога хорошая, записала",
+  "uz": "Yo'l yaxshi, yozib oldim",
+  "file": "rate_road_b"
+ },
+ {
+  "key": "rate_road_c",
+  "ru": "Дорога удовлетворительная, записала",
+  "uz": "Yo'l qoniqarli, yozib oldim",
+  "file": "rate_road_c"
+ },
+ {
+  "key": "rate_road_d",
+  "ru": "Дорога плохая, записала",
+  "uz": "Yo'l yomon, yozib oldim",
+  "file": "rate_road_d"
+ },
+ {
+  "key": "rate_road_e",
+  "ru": "Дорога разбитая, записала",
+  "uz": "Yo'l buzilgan, yozib oldim",
+  "file": "rate_road_e"
+ },
+ {
   "key": "ahead_pothole_50",
   "ru": "Впереди яма, пятьдесят метров",
   "uz": "Oldinda o'ra, ellik metr",

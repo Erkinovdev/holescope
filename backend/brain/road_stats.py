@@ -27,13 +27,51 @@ def fixed_rules() -> dict:
 def current_params() -> Params:
     """Параметры алгоритма активной версии (границы классов ровности и т.д.)."""
     from .models import AlgoVersion
-    av = AlgoVersion.objects.filter(active=True).first()
+    av = AlgoVersion.objects.filter(active=True, kind="rules").first()
     p = Params()
     if av and av.params:
         for k, v in av.params.items():
             if hasattr(p, k) and k != "features":
                 setattr(p, k, tuple(v) if k == "ri_bounds" else v)
     return p
+
+
+# ───────────────────────── уровни ям ─────────────────────────
+DEFAULT_LEVEL_BOUNDS = (5.0, 8.0, 14.0)  # границы по силе удара: light < b0 ≤ mid < b1 ≤ deep < b2 ≤ danger (как в алгоритме телефона)
+
+
+def active_level_bounds() -> tuple[float, float, float] | None:
+    """Границы, подобранные по разметке (активная версия «levels»); None — нет подбора, действуют решения телефона."""
+    from .models import AlgoVersion
+    av = AlgoVersion.objects.filter(active=True, kind="levels").first()
+    b = (av.params or {}).get("bounds") if av else None
+    return tuple(float(x) for x in b) if b and len(b) == 3 else None
+
+
+def level_bounds() -> tuple[float, float, float]:
+    return active_level_bounds() or DEFAULT_LEVEL_BOUNDS
+
+
+def level_for(score: float, bounds=None) -> str:
+    b = bounds or level_bounds()
+    return "light" if score < b[0] else "mid" if score < b[1] else "deep" if score < b[2] else "danger"
+
+
+def relevel_all(bounds=None) -> dict:
+    """Пересчитать уровни ям по силе удара с текущими границами (события типа «яма» и сами объекты)."""
+    b = bounds or level_bounds()
+    ev = cl = 0
+    for e in RoadEvent.objects.filter(type="pothole").only("id", "score", "level").iterator(chunk_size=2000):
+        lv = level_for(e.score, b)
+        if lv != e.level:
+            RoadEvent.objects.filter(pk=e.pk).update(level=lv)
+            ev += 1
+    for c in EventCluster.objects.filter(type="pothole").exclude(status="false").only("id", "score_median", "level"):
+        lv = level_for(c.score_median, b)
+        if lv != c.level:
+            EventCluster.objects.filter(pk=c.pk).update(level=lv)
+            cl += 1
+    return dict(events=ev, clusters=cl, bounds=list(b))
 
 
 # ───────────────────────── ровность сегментов ─────────────────────────
@@ -141,24 +179,40 @@ def evaluate_all_fixed(now=None) -> int:
 
 
 # ───────────────────────── голоса по типу ─────────────────────────
-TYPE_BY_LABEL = {"manhole": "manhole", "bump": "bump", "joint": "joint", "rail": "rail_tram"}
-
-
 def refine_cluster_type(cluster: EventCluster, label: str) -> None:
-    """Ответы водителей уточняют тип объекта: ≥3 голосов и >60 % → меняем type (люк, лежачий, рельсы, стык)."""
+    """Ответы водителей уточняют объект: ≥3 голосов и >60 % за один тип → меняем type (люк, лежачий, рельсы, заплатка…);
+    для ям и лежачих так же голосуем за уровень (мелкая / средняя / глубокая / опасная)."""
+    from . import taxonomy
+    label = taxonomy.norm(label)
     votes = dict(cluster.type_votes or {})
     votes[label] = votes.get(label, 0) + 1
     cluster.type_votes = votes
-    total = sum(votes.values())
+    by_type: dict[str, int] = {}
+    by_level: dict[str, dict[str, int]] = {}
     for lab, n in votes.items():
-        if lab in TYPE_BY_LABEL and n >= 3 and n / total > 0.6:
-            t = TYPE_BY_LABEL[lab]
-            if lab == "rail":
-                seg = cluster.segment
-                t = "rail_train" if seg is not None and seg.level_crossing and not seg.tram else "rail_tram"
+        it = taxonomy.BY_KEY.get(lab)
+        if not it or not it.road:
+            continue
+        by_type[it.type] = by_type.get(it.type, 0) + n
+    total = sum(by_type.values())
+    for t, n in by_type.items():
+        if n >= 3 and n / total > 0.6:
+            if t == "rail_tram" and cluster.segment is not None and cluster.segment.level_crossing and not cluster.segment.tram:
+                t = "rail_train"
             cluster.type = t
+            # уровень: голоса внутри выбранного типа
+            for lab, k in votes.items():
+                it = taxonomy.BY_KEY.get(lab)
+                if it and it.road and it.type == cluster.type and it.level:
+                    by_level.setdefault(it.level, {})
+                    by_level[it.level][lab] = k
+            lv = {lvl: sum(d.values()) for lvl, d in by_level.items()}
+            if lv:
+                best, nb = max(lv.items(), key=lambda kv: kv[1])
+                if nb >= 3 and nb / sum(lv.values()) > 0.5:
+                    cluster.level = best
             break
-    cluster.save(update_fields=["type_votes", "type"])
+    cluster.save(update_fields=["type_votes", "type", "level"])
 
 
 # ───────────────────────── калибровка устройства ─────────────────────────

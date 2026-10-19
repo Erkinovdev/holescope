@@ -29,6 +29,7 @@ class AppSettings {
     this.pressureBar,
     this.holiAsk = true,
     this.holiWake = false,
+    this.holiEngine = 'auto',
   });
 
   final ThemeMode themeMode;
@@ -44,6 +45,7 @@ class AppSettings {
   final double? pressureBar;
   final bool holiAsk; // Холи спрашивает «да/нет» после ударов, похожих на яму
   final bool holiWake; // слушать «Привет, Холи» (только пока экран включён)
+  final String holiEngine; // распознавание речи: auto | device | cloud
 
   AppSettings copyWith({
     ThemeMode? themeMode,
@@ -63,6 +65,7 @@ class AppSettings {
     Object? pressureBar = _keep,
     bool? holiAsk,
     bool? holiWake,
+    String? holiEngine,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -82,6 +85,7 @@ class AppSettings {
         pressureBar: identical(pressureBar, _keep) ? this.pressureBar : pressureBar as double?,
         holiAsk: holiAsk ?? this.holiAsk,
         holiWake: holiWake ?? this.holiWake,
+        holiEngine: holiEngine ?? this.holiEngine,
       );
 }
 
@@ -114,6 +118,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       pressureBar: _p.getDouble('pressureBar'),
       holiAsk: _p.getBool('holiAsk') ?? true,
       holiWake: _p.getBool('holiWake') ?? false,
+      holiEngine: _p.getString('holiEngine') ?? 'auto',
     );
   }
 
@@ -133,6 +138,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _p.setBool('autoRecord', s.autoRecord);
     _p.setBool('holiAsk', s.holiAsk);
     _p.setBool('holiWake', s.holiWake);
+    _p.setString('holiEngine', s.holiEngine);
     _setOrRemove('carName', s.carName);
     _setOrRemove('tires', s.tires);
     s.wheelbaseMm == null ? _p.remove('wheelbaseMm') : _p.setInt('wheelbaseMm', s.wheelbaseMm!);

@@ -3,26 +3,28 @@ from __future__ import annotations
 import math
 from datetime import timedelta
 from django.utils import timezone
-from brain import road_stats
+from brain import road_stats, taxonomy
 from brain.models import Label
 from roadnet.matching import get_index
 from .models import DriverMark, EventCluster, RoadEvent
 
 MATCH_M, MATCH_S, WAIT_S = 35.0, 90.0, 2 * 3600
-LABEL = {"deep": "pothole_deep", "bump": "bump", "manhole": "manhole"}
-TYPE = {"pothole": "pothole", "deep": "pothole", "bump": "bump", "manhole": "manhole"}
+RATING_BACK_S = 120  # оценка дороги относится к участку, который проехали за последние ~2 минуты (≈ 1 км)
+
+
+def label_of(kind: str, ev: RoadEvent | None = None) -> str:
+    """Метка для обучения по виду отметки: «pothole» → по уровню события, «deep» → глубокая, остальное — ключ справочника."""
+    if kind == "pothole":
+        lv = ev.level if ev and ev.level in ("light", "mid", "deep", "danger") else "mid"
+        return f"pothole_{lv}"
+    if kind == "deep":
+        return "pothole_deep"
+    return taxonomy.norm(kind)
 
 
 def _meters(la1, lo1, la2, lo2) -> float:
     dx = (lo2 - lo1) * 111320 * math.cos(math.radians(la1))
     return math.hypot(dx, (la2 - la1) * 111320)
-
-
-def _label_for(mark: DriverMark, ev: RoadEvent | None) -> str:
-    if mark.kind == "pothole":
-        lv = ev.level if ev and ev.level in ("light", "mid", "deep") else "mid"
-        return f"pothole_{lv}"
-    return LABEL[mark.kind]
 
 
 def _match_event(mark: DriverMark) -> RoadEvent | None:
@@ -48,29 +50,49 @@ def _confirm_by_people(c: EventCluster):
         c.save(update_fields=["status", "confidence"])
 
 
+def is_rating(kind: str) -> bool:
+    return kind in taxonomy.ROAD_RATINGS
+
+
+def _apply_rating(mark: DriverMark, now) -> bool:
+    """Оценка дороги («ровная … разбитая»): берём медианный индекс ровности участка, который только что проехали, — это обучающие данные для границ A–E."""
+    from statistics import median
+    from .models import SegmentScore
+    lo = mark.at - timedelta(seconds=RATING_BACK_S)
+    ri = [s.ri for s in SegmentScore.objects.filter(device=mark.device, at__gte=lo, at__lte=mark.at + timedelta(seconds=5))]
+    if ri:
+        mark.ri, mark.applied = float(median(ri)), True
+        mark.save(update_fields=["ri", "applied"])
+        _bump_trust(mark.device, 0.002)
+        return True
+    if (now - mark.created).total_seconds() < WAIT_S:
+        return False  # поездка ещё не загружена
+    mark.applied = True
+    mark.save(update_fields=["applied"])
+    return True
+
+
 def apply_mark(mark: DriverMark, now=None) -> bool:
     """Применяет отметку, если есть к чему привязать (или вышло время ожидания поездки). True — обработана."""
     if mark.applied:
         return True
     now = now or timezone.now()
+    if is_rating(mark.kind):
+        return _apply_rating(mark, now)
+    negative = mark.kind == "not_pothole" or not taxonomy.is_road(label_of(mark.kind))
     ev = _match_event(mark)
     if ev:
-        if mark.kind == "not_pothole":
-            Label.objects.create(event=ev, source="driver", label="noise", features=ev.features, trip_key=str(ev.trip_id))
-            ev.user_label = "nothing"
-            ev.save(update_fields=["user_label"])
+        lab = "noise" if mark.kind == "not_pothole" else label_of(mark.kind, ev)
+        Label.objects.create(event=ev, source="driver", label=lab, features=ev.features, trip_key=str(ev.trip_id))
+        ev.user_label = "nothing" if mark.kind == "not_pothole" else lab
+        ev.save(update_fields=["user_label"])
+        if negative:
             if ev.cluster and ev.cluster.passes <= 1:
                 ev.cluster.status = "false"
                 ev.cluster.save(update_fields=["status"])
-        else:
-            lab = _label_for(mark, ev)
-            Label.objects.create(event=ev, source="driver", label=lab, features=ev.features, trip_key=str(ev.trip_id))
-            ev.user_label = lab
-            ev.save(update_fields=["user_label"])
-            if ev.cluster:
-                if lab in ("bump", "manhole"):
-                    road_stats.refine_cluster_type(ev.cluster, lab)
-                mark.cluster = ev.cluster
+        elif ev.cluster:
+            road_stats.refine_cluster_type(ev.cluster, lab)
+            mark.cluster = ev.cluster
         mark.event, mark.applied = ev, True
         mark.save(update_fields=["event", "cluster", "applied"])
         _bump_trust(mark.device, 0.005)
@@ -78,11 +100,12 @@ def apply_mark(mark: DriverMark, now=None) -> bool:
     if (now - mark.created).total_seconds() < WAIT_S:
         return False  # поездка ещё не загружена — подождём
     mark.applied = True  # алгоритм ничего не нашёл
-    if mark.kind != "not_pothole":
+    if not negative:
+        lab = label_of(mark.kind)
         cands = EventCluster.objects.filter(lat__gte=mark.lat - 0.0003, lat__lte=mark.lat + 0.0003, lon__gte=mark.lon - 0.0004, lon__lte=mark.lon + 0.0004).exclude(status__in=("false", "fixed"))
         near = next((c for c in cands if _meters(mark.lat, mark.lon, c.lat, c.lon) <= 25), None)
         if near is None:
-            near = EventCluster.objects.create(lat=mark.lat, lon=mark.lon, heading=mark.heading, type=TYPE[mark.kind], level="deep" if mark.kind == "deep" else "mid",
+            near = EventCluster.objects.create(lat=mark.lat, lon=mark.lon, heading=mark.heading, type=taxonomy.type_for(lab) or "pothole", level=taxonomy.level_for(lab) or "mid",
                                                status="candidate", passes=0, devices=0, confidence=0.4, last_hit=mark.at, type_votes={"driver": 1})
             m = get_index().snap(mark.lat, mark.lon, mark.heading)
             if m:

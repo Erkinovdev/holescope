@@ -93,6 +93,19 @@ def readiness() -> dict:
         steps.append("Модель включена. Продолжайте размечать спорные события — они улучшают её сильнее всего.")
     if open_q:
         steps.append(f"Ответов водителей ждут {open_q} вопросов — их можно разметить вручную.")
+    # модель «что это» и калибровка
+    from . import intelligence, taxonomy
+    from .training import TYPE_MIN_PER_CLASS, TYPE_MIN_TOTAL
+    type_counts: dict[str, int] = {}
+    for lab in Label.objects.exclude(event=None).values_list("label", flat=True):
+        t = taxonomy.type_for(lab) if taxonomy.is_road(lab) else ""
+        if t in intelligence.CLASSES:
+            type_counts[t] = type_counts.get(t, 0) + 1
+    types_model = AlgoVersion.objects.filter(active=True, kind="types").first()
+    if not types_model:
+        ready = sum(1 for n in type_counts.values() if n >= TYPE_MIN_PER_CLASS)
+        if sum(type_counts.values()) < TYPE_MIN_TOTAL or ready < 2:
+            steps.append(f"Для модели «что это»: разметить ещё типы объектов (люки, лежачие, рельсы, ямы) — нужно {TYPE_MIN_TOTAL}+ меток и по {TYPE_MIN_PER_CLASS}+ минимум на два класса (сейчас {sum(type_counts.values())}).")
     pct = min(100, round(100 * min(n_labels / MIN_LABELS, 1) * 0.5 + 100 * min(len(big) / MIN_TRIPS, 1) * 0.5))
     if active:
         state, title = "learned", f"Умная модель {active.version} включена и принимает решения"
@@ -108,4 +121,46 @@ def readiness() -> dict:
         else:
             last_txt = last.log
     return dict(state=state, title=title, progress=pct, steps=steps, last_training=last_txt,
+                types=dict(counts={intelligence.NAMES.get(k, k): n for k, n in sorted(type_counts.items(), key=lambda kv: -kv[1])}, active=types_model.version if types_model else None, per_class=TYPE_MIN_PER_CLASS),
                 facts=dict(labels=n_labels, road=pos, not_road=neg, trips_ready=len(big), trips_needed=MIN_TRIPS, labels_needed=MIN_LABELS, open_questions=open_q))
+
+
+def analyze_cluster(c) -> dict:
+    """Подробный разбор объекта для админки: что это (по форме и контексту, с вероятностями и причинами), голоса людей, уровень, ровность дороги."""
+    from statistics import median
+    from . import inference, intelligence, road_stats, taxonomy
+    evs = list(c.events.order_by("-at")[:40])
+    ctx = intelligence.context_features(c)
+    feats: dict = {}
+    for k in ("pair", "dur_ms"):
+        vals = [float((e.features or {}).get(k)) for e in evs if isinstance((e.features or {}).get(k), (int, float))]
+        if vals:
+            feats[k] = median(vals)
+    if evs:
+        feats["speed_kmh"] = median(e.speed_kmh for e in evs)
+    guess = intelligence.guess_type(feats, ctx, evs[0].wave if evs else None)
+    source = "rules"
+    av, tmodel = inference.active_type_model()
+    if tmodel is not None and evs:
+        try:
+            probs = inference.predict_type(tmodel, {**(evs[0].features or {}), "peak": evs[0].peak, "score": evs[0].score, "speed_kmh": evs[0].speed_kmh}, evs[0].wave, ctx)
+            guess = intelligence.TypeGuess(probs=probs, reasons=guess.reasons, top=max(probs, key=probs.get))
+            source = av.version
+        except Exception:  # noqa: BLE001 — модель не должна ломать карточку
+            source = "rules"
+    ranked = [dict(type=k, name=intelligence.NAMES.get(k, k), p=p) for k, p in guess.ranked(4)]
+    votes = [dict(label=k, name=(taxonomy.BY_KEY[taxonomy.norm(k)].ru if taxonomy.norm(k) in taxonomy.BY_KEY else k), n=n)
+             for k, n in sorted((c.type_votes or {}).items(), key=lambda kv: -kv[1])]
+    b = road_stats.level_bounds()
+    score = c.score_median
+    nxt = next(((name, bound) for name, bound in zip(("средняя", "глубокая", "опасная"), b) if score < bound), None)
+    level = dict(current=c.level, score=round(score, 2), bounds=list(b), calibrated=road_stats.active_level_bounds() is not None,
+                 text=(f"Сила удара {score:.1f} → уровень «{LEVEL_RU.get(c.level, '—')}»" + (f"; до «{nxt[0]}» ещё {nxt[1] - score:.1f}" if nxt else "; выше нет")))
+    seg = c.segment
+    rough = None
+    if seg is not None:
+        names = {"A": "ровная", "B": "хорошая", "C": "удовлетворительная", "D": "плохая", "E": "разбитая"}
+        rough = dict(cls=seg.cls, name=names.get(seg.cls, "нет данных"), ri=round(seg.ri_median, 4) if seg.ri_median is not None else None, passes=seg.ri_n, devices=seg.ri_devices,
+                     road=seg.road.name_ru if seg.road.named else seg.road.code, road_class=seg.road.road_class, surface=seg.surface,
+                     flags=[n for n, v in (("трамвай", seg.tram), ("ж/д переезд", seg.level_crossing), ("мост", seg.bridge), ("тоннель", seg.tunnel)) if v])
+    return dict(guess=dict(top=guess.top, ranked=ranked, reasons=guess.reasons, matches_current=guess.top == c.type, source=source), context=ctx, votes=votes, level=level, roughness=rough)

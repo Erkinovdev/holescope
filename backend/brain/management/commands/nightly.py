@@ -26,6 +26,8 @@ class Command(BaseCommand):
                 n += 1
         out(f"подвеска: {n} машин; моделей с оценкой: {road_stats.refresh_car_model_stats()}")
         call_command("train_brain", stdout=self.stdout)
+        from brain import training
+        out(f"типы: {training.train_types().log}")
         call_command("brain_snapshot", stdout=self.stdout)
         for p in ("week", "month", "year"):
             out(f"награды {p}: {len(awards.compute_awards(p))}")

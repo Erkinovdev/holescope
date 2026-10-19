@@ -700,7 +700,8 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get holiHint => 'Скажите: яма, глубокая яма, лежачий, люк или отмена';
+  String get holiHint =>
+      'Скажите: яма, глубокая яма, лежачий, люк, рельсы, переезд — или оценку дороги: ровная, хорошая, плохая, разбитая';
 
   @override
   String get setHoliAsk => 'Холи спрашивает «да/нет» после удара';
@@ -713,4 +714,131 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get loaderScanning => 'Сканируем дорогу…';
+
+  @override
+  String get holiErrMic => 'Нет доступа к микрофону';
+
+  @override
+  String get holiErrMicBlocked => 'Микрофон запрещён в настройках телефона';
+
+  @override
+  String get holiErrUnavailable => 'На телефоне нет службы распознавания речи';
+
+  @override
+  String get holiErrLang =>
+      'Узбекский язык не поддерживается распознаванием телефона';
+
+  @override
+  String get holiErrBusy => 'Распознавание занято, попробуйте ещё раз';
+
+  @override
+  String get holiErrNet => 'Нет связи с сервером';
+
+  @override
+  String get holiErrTimeout => 'Распознавание не запустилось';
+
+  @override
+  String get holiErrFailed => 'Не удалось распознать речь';
+
+  @override
+  String get holiOpenSettings => 'Открыть настройки';
+
+  @override
+  String get holiCheck => 'Проверка голоса';
+
+  @override
+  String get holiBtnDone => 'Готово';
+
+  @override
+  String get holiBtnSkip => 'Пропустить';
+
+  @override
+  String get holiBtnCancel => 'Отмена';
+
+  @override
+  String get setHoliEngine => 'Распознавание речи';
+
+  @override
+  String get holiEngineAuto => 'Автоматически';
+
+  @override
+  String get holiEngineDevice => 'На телефоне';
+
+  @override
+  String get holiEngineCloud => 'На сервере (лучше для узбекского)';
+
+  @override
+  String get vcTitle => 'Проверка голоса';
+
+  @override
+  String get vcMic => 'Микрофон';
+
+  @override
+  String get vcMicOk => 'Доступ есть';
+
+  @override
+  String get vcMicNo => 'Нет доступа';
+
+  @override
+  String get vcAllow => 'Разрешить';
+
+  @override
+  String get vcSpeech => 'Распознавание на телефоне';
+
+  @override
+  String get vcSpeechOk => 'Работает';
+
+  @override
+  String get vcSpeechNo => 'Недоступно';
+
+  @override
+  String get vcSound => 'Голос Холи';
+
+  @override
+  String get vcPlay => 'Проверить звук';
+
+  @override
+  String get vcListen => 'Проверить распознавание';
+
+  @override
+  String get vcListenHint => 'Нажмите и скажите: «глубокая яма» или «яма»';
+
+  @override
+  String get vcCloud => 'Проверить сервер';
+
+  @override
+  String get vcHeard => 'Услышано';
+
+  @override
+  String get vcEngine => 'Распознавал';
+
+  @override
+  String get vcTime => 'Время';
+
+  @override
+  String get vcLog => 'Журнал';
+
+  @override
+  String get vcCopy => 'Скопировать журнал';
+
+  @override
+  String get vcCopied => 'Журнал скопирован';
+
+  @override
+  String get vcCommand => 'Команда';
+
+  @override
+  String get vcNone => 'команда не найдена';
+
+  @override
+  String get vcError => 'Ошибка';
+
+  @override
+  String get vcWorking => 'Слушаю…';
+
+  @override
+  String get optMore => 'Другие варианты';
+
+  @override
+  String get optLess => 'Свернуть';
 }

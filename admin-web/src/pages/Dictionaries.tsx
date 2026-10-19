@@ -7,6 +7,7 @@ import { useGet, useSave } from '../lib/hooks'
 const TITLES: Record<string, string> = {
   event_types: 'Типы событий', event_levels: 'Уровни ям', event_statuses: 'Статусы ям', road_classes: 'Классы дорог', surfaces: 'Покрытие', roughness_classes: 'Классы ровности A–E',
   suspension_classes: 'Классы подвески S1–S5', mounts: 'Положение телефона', roles: 'Роли устройств', trip_modes: 'Режимы поездки', complaint_statuses: 'Статусы жалоб', complaint_channels: 'Каналы жалоб',
+  labels: 'Что это: варианты ответа и разметки', label_groups: 'Группы вариантов', road_ratings: 'Оценка дороги голосом',
 }
 
 export default function DictionariesPage() {

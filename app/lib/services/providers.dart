@@ -10,7 +10,9 @@ import '../l10n/app_localizations.dart';
 import '../voice/holi_controller.dart';
 import '../voice/holi_phrase.dart';
 import '../voice/holi_voice.dart';
+import '../voice/cloud_speech.dart';
 import '../voice/speech_engine.dart';
+import '../voice/voice_recognizer.dart';
 import 'ahead_warner.dart';
 import 'announcer.dart';
 import 'api_client.dart';
@@ -56,12 +58,29 @@ String _voiceLang(Ref ref) {
 /// Озвучка Холи (файлы mp3, запасной вариант — системный голос).
 final holiVoiceProvider = Provider<Future<HoliVoice>>((ref) => HoliVoice.load(lang: () => _voiceLang(ref)));
 
+/// «Слух» Холи: распознавание на телефоне с запасным вариантом на сервере (режим выбирается в настройках).
+final voiceRecognizerProvider = Provider<VoiceRecognizer>((ref) {
+  final eng = ref.read(engineProvider);
+  return VoiceRecognizer(
+    device: DeviceSpeechEngine(),
+    cloud: CloudSpeechEngine((wav, lang) async {
+      await eng.auth.ensureRegistered(eng.api, platform: eng.platform);
+      return eng.api.transcribe(wav, lang);
+    }),
+    mode: () => switch (ref.read(settingsProvider).holiEngine) {
+      'device' => RecognizerMode.device,
+      'cloud' => RecognizerMode.cloud,
+      _ => RecognizerMode.auto,
+    },
+  );
+});
+
 /// Диалог Холи: команды, вопрос «да/нет» после удара, отметки. Подключается к движку записи.
 final holiControllerProvider = FutureProvider<HoliController>((ref) async {
   final voice = await ref.watch(holiVoiceProvider);
   final eng = ref.read(engineProvider);
   final marks = MarkService(db: eng.db, api: eng.api, auth: eng.auth, platform: eng.platform);
-  final ctrl = HoliController(voice: voice, speech: DeviceSpeechEngine(), marks: marks, fixAt: eng.fixAt, lang: () => _voiceLang(ref));
+  final ctrl = HoliController(voice: voice, speech: ref.read(voiceRecognizerProvider), marks: marks, fixAt: eng.fixAt, lang: () => _voiceLang(ref));
   eng.onCandidate = (c) {
     final s = ref.read(settingsProvider);
     if (s.holiAsk && s.voice) unawaited(ctrl.askConfirm(c));

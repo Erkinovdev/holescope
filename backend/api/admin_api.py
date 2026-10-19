@@ -95,7 +95,7 @@ def overview(request):
         "recent": [cluster_json(c) for c in recent],
     })
 
-from brain.explain import explain_event, explain_cluster  # noqa: E402
+from brain.explain import analyze_cluster, explain_event, explain_cluster  # noqa: E402
 
 
 # ───────────────────────── ямы (модерация) ─────────────────────────
@@ -145,7 +145,7 @@ def cluster_detail(request, cid):
                 confidence=e.confidence, user_label=e.user_label, trip=e.trip_id, wave=e.wave, algo_version=e.algo_version, explain=explain_event(e),
                 features={k: e.features.get(k) for k in ("ratio", "dur_ms", "pair", "first", "hf_share", "gyro_peak", "noise") if isinstance(e.features, dict)})
            for e in c.events.select_related("device").order_by("-at")[:60]]
-    return JsonResponse(dict(cluster_json(c), why=explain_cluster(c, evs), events=evs, type_votes=c.type_votes, complaints=c.complaints.count(),
+    return JsonResponse(dict(cluster_json(c), why=explain_cluster(c, evs), analysis=analyze_cluster(c), events=evs, type_votes=c.type_votes, complaints=c.complaints.count(),
                              quiet=list(c.quiet.order_by("-at").values("at", "speed_kmh", "device_id")[:20])))
 
 

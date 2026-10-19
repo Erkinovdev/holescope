@@ -18,7 +18,9 @@ from telemetry.models import EventCluster, RawUpload, RoadEvent, SegmentScore, T
 from .admin_api import audit, iso, page_of
 from .auth import body, role_required
 
-LABELS = ["pothole_light", "pothole_mid", "pothole_deep", "bump", "manhole", "rail", "joint", "noise", "handled"]
+from brain import taxonomy  # noqa: E402
+
+LABELS = taxonomy.LABEL_KEYS
 
 # допустимые диапазоны параметров алгоритма (защита от случайной порчи)
 RANGES = dict(grav_alpha=(0.001, 0.2), smooth_samples=(1, 8), floor=(0.5, 10.0), k_noise=(1.0, 10.0), min_speed_ms=(0.2, 5.0), low_conf_speed_ms=(0.5, 8.0),
@@ -46,7 +48,7 @@ def validate_params(d: dict) -> tuple[dict, str | None]:
 
 
 def version_json(a: AlgoVersion) -> dict:
-    return dict(id=a.pk, version=a.version, kind=a.kind, active=a.active, metrics=a.metrics, notes=a.notes, created=iso(a.created), params=a.params if a.kind == "rules" else {"features": a.params.get("features")})
+    return dict(id=a.pk, version=a.version, kind=a.kind, active=a.active, metrics=a.metrics, notes=a.notes, created=iso(a.created), params=a.params if a.kind in ("rules", "levels") else {"features": a.params.get("features")})
 
 
 def active_params() -> dict:
@@ -135,7 +137,7 @@ def questions(request):
     cand.sort(key=lambda x: -x[0])
     queue = [dict(id=e.pk, priority=round(float(pr), 3), at=iso(e.at), lat=e.lat, lon=e.lon, speed_kmh=e.speed_kmh, peak=e.peak, score=e.score, type=e.type, level=e.level,
                   confidence=e.confidence, wave=e.wave, cluster=e.cluster_id) for pr, e in cand[:int(request.GET.get("limit", 30) or 30)]]
-    return JsonResponse(dict(stats=stats, queue=queue, labels=LABELS))
+    return JsonResponse(dict(stats=stats, queue=queue, labels=LABELS, taxonomy=taxonomy.as_json()))
 
 
 @csrf_exempt
@@ -146,11 +148,15 @@ def label_event(request):
     e = RoadEvent.objects.filter(pk=d.get("event_id")).first()
     if not e:
         return JsonResponse({"error": "event not found"}, status=404)
-    if d.get("label") not in LABELS:
+    if d.get("label") not in taxonomy.ACCEPTED or d.get("label") == "not_sure":
         return JsonResponse({"error": f"label: {LABELS}"}, status=400)
-    lab = Label.objects.create(event=e, source="admin", label=d["label"], features=e.features, trip_key=str(e.trip_id))
-    RoadEvent.objects.filter(pk=e.pk).update(user_label=d["label"])
-    audit(request, "label", f"event:{e.pk}", dict(label=d["label"]))
+    value = taxonomy.norm(d["label"])
+    lab = Label.objects.create(event=e, source="admin", label=value, features=e.features, trip_key=str(e.trip_id))
+    RoadEvent.objects.filter(pk=e.pk).update(user_label=value)
+    if e.cluster and taxonomy.is_road(value):
+        from brain import road_stats
+        road_stats.refine_cluster_type(e.cluster, value)
+    audit(request, "label", f"event:{e.pk}", dict(label=value))
     return JsonResponse(dict(id=lab.pk, labels_total=Label.objects.count()), status=201)
 
 

@@ -15,7 +15,9 @@ from django.db import transaction
 from .models import AlgoVersion, Label, TrainingRun
 
 FEATURES = ["peak", "score", "ratio", "first", "dur_ms", "energy", "pair", "hf_share", "lat_share", "long_share", "gyro_peak", "speed_kmh", "noise"]
-ROAD = {"pothole", "pothole_light", "pothole_mid", "pothole_deep", "bump", "manhole", "rail", "joint"}
+from .taxonomy import ROAD_KEYS
+
+ROAD = set(ROAD_KEYS) | {"rail", "pothole"}  # дорожные метки: всё из справочника, кроме «шум, телефон трогали, бордюр, торможение»
 RULE_ROAD_TYPES = {"pothole", "bump", "manhole", "joint"}
 
 MIN_LABELS = 60
@@ -112,7 +114,7 @@ def train(min_labels: int = MIN_LABELS) -> TrainingRun:
     activate = enough_trips and cv_kind == "leave-trip-out" and gain >= MIN_F1_GAIN
     metrics = dict(info, cv=cv_kind, model_kind=best, candidates=scored, importances=_importances(final), model=m_new, rules=m_rule, f1_gain=gain, activated=bool(activate))
     if activate:
-        AlgoVersion.objects.filter(active=True).update(active=False)
+        AlgoVersion.objects.filter(active=True, kind="gbm").update(active=False)
     av = AlgoVersion.objects.create(version=ver, kind="gbm", params={"features": FEATURES}, model_blob=pickle.dumps(final), metrics=metrics, active=bool(activate),
                                     notes="включена автоматически: лучше правил на отложенных поездках" if activate else
                                           f"не включена: cv={cv_kind}, прирост F1 {gain:+.3f} (нужно ≥{MIN_F1_GAIN} и ≥{MIN_TRIPS} поездок по ≥{MIN_PER_TRIP} меток)")
@@ -186,3 +188,97 @@ def _jsonable(d):
         else:
             out[k] = v
     return out
+
+
+# ───────────────────────── модель «что это» (тип объекта) ─────────────────────────
+TYPE_MIN_PER_CLASS = 6
+TYPE_MIN_TOTAL = 30
+TYPE_MIN_GAIN = 0.05
+
+
+def type_vec(features: dict, wave, ctx: dict | None) -> list[float]:
+    """Признаки события + форма сигнала + контекст объекта для модели типа."""
+    from .intelligence import CONTEXT_KEYS, WAVE_KEYS, wave_features
+    w = wave_features(wave) if wave else {k: float((features or {}).get(k, 0) or 0) for k in WAVE_KEYS}
+    c = ctx or {}
+    return vec(features or {}) + [float(w.get(k, 0)) for k in WAVE_KEYS] + [float(c.get(k, 0) or 0) for k in CONTEXT_KEYS]
+
+
+def type_feature_names() -> list[str]:
+    from .intelligence import CONTEXT_KEYS, WAVE_KEYS
+    return FEATURES + WAVE_KEYS + CONTEXT_KEYS
+
+
+def collect_types():
+    """Матрица признаков, классы (тип на карте по метке), группы-поездки, подсказки правил (для сравнения)."""
+    from . import intelligence, taxonomy
+    X, y, groups, rules = [], [], [], []
+    ctx_cache: dict = {}
+    for l in Label.objects.select_related("event__cluster__segment").iterator():
+        e = l.event
+        cls = taxonomy.type_for(l.label) if taxonomy.is_road(l.label) else ""
+        if not e or not cls or cls not in intelligence.CLASSES:
+            continue
+        c = e.cluster
+        ctx = None
+        if c is not None:
+            ctx = ctx_cache.get(c.pk) or ctx_cache.setdefault(c.pk, intelligence.context_features(c))
+        feats = {**(e.features or {}), "peak": e.peak, "score": e.score, "speed_kmh": e.speed_kmh}
+        X.append(type_vec(feats, e.wave, ctx))
+        y.append(cls)
+        groups.append(str(e.trip_id))
+        rules.append(intelligence.guess_type({**feats}, ctx, e.wave).top)
+    return np.array(X, float), np.array(y), np.array(groups), np.array(rules)
+
+
+@transaction.atomic
+def train_types() -> TrainingRun:
+    """Многоклассовая модель типа объекта. Включается, только если на отложенных поездках лучше правил (macro-F1 ≥ +0.05) и данных достаточно."""
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import accuracy_score, f1_score
+    from sklearn.model_selection import GroupKFold
+    X, y, g, rules = collect_types()
+    counts = {k: int((y == k).sum()) for k in sorted(set(y))} if len(y) else {}
+    run = TrainingRun(n_labels=len(y))
+    usable = [k for k, n in counts.items() if n >= TYPE_MIN_PER_CLASS]
+    if len(y) < TYPE_MIN_TOTAL or len(usable) < 2:
+        run.log = f"типы: мало данных ({len(y)} меток; по классам {counts}); нужно ≥{TYPE_MIN_TOTAL} и ≥{TYPE_MIN_PER_CLASS} на каждый из двух и более классов"
+        run.metrics = dict(kind="types", counts=counts)
+        run.save()
+        return run
+    keep = np.isin(y, usable)
+    X, y, g, rules = X[keep], y[keep], g[keep], rules[keep]
+    trips = sorted(set(g))
+    enough_trips = len(trips) >= 2
+
+    def model():
+        return RandomForestClassifier(n_estimators=250, max_depth=6, min_samples_leaf=2, class_weight="balanced", random_state=0)
+
+    pred = np.empty(len(y), dtype=object)
+    if enough_trips:
+        splits = list(GroupKFold(n_splits=min(5, len(trips))).split(X, y, g))
+    else:
+        idx = np.arange(len(y)) * 5 // len(y)
+        splits = [(np.where(idx != b)[0], np.where(idx == b)[0]) for b in range(5)]
+    for tr, te in splits:
+        if len(set(y[tr])) < 2:
+            pred[te] = rules[te]
+            continue
+        pred[te] = model().fit(X[tr], y[tr]).predict(X[te])
+    m_acc, m_f1 = float(accuracy_score(y, pred)), float(f1_score(y, pred, average="macro", zero_division=0))
+    r_acc, r_f1 = float(accuracy_score(y, rules)), float(f1_score(y, rules, average="macro", zero_division=0))
+    final = model().fit(X, y)
+    n = AlgoVersion.objects.filter(kind="types").count() + 1
+    gain = m_f1 - r_f1
+    activate = enough_trips and gain >= TYPE_MIN_GAIN
+    importances = {k: round(float(v), 3) for k, v in sorted(zip(type_feature_names(), final.feature_importances_), key=lambda kv: -kv[1])[:12]}
+    metrics = dict(kind="types", counts=counts, classes=[str(c) for c in final.classes_], cv="leave-trip-out" if enough_trips else "blocks-of-one-trip",
+                   model=dict(acc=m_acc, f1=m_f1), rules=dict(acc=r_acc, f1=r_f1), f1_gain=gain, activated=bool(activate), importances=importances)
+    if activate:
+        AlgoVersion.objects.filter(kind="types", active=True).update(active=False)
+    av = AlgoVersion.objects.create(version=f"types-{n}", kind="types", params={"features": type_feature_names()}, model_blob=pickle.dumps(final), metrics=metrics, active=bool(activate),
+                                    notes="включена: лучше правил на отложенных поездках" if activate else f"не включена: прирост macro-F1 {gain:+.3f} (нужно ≥{TYPE_MIN_GAIN} и ≥2 поездки)")
+    run.algo, run.metrics = av, metrics
+    run.log = f"ok: типы, версия {av.version}" + (" ВКЛЮЧЕНА" if activate else " сохранена неактивной")
+    run.save()
+    return run

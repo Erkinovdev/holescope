@@ -27,7 +27,7 @@ export function ago(iso: string | null | undefined, now = Date.now()): string {
   return `${Math.round(s / 86400)} дн назад`
 }
 
-export const TYPE_NAMES: Record<string, string> = { pothole: 'яма', bump: 'лежачий', manhole: 'люк', joint: 'стык', rail_tram: 'рельсы трамвая', rail_train: 'ж/д переезд', rough_patch: 'гребёнка', rutting: 'колейность' }
+export const TYPE_NAMES: Record<string, string> = { pothole: 'яма', bump: 'лежачий', manhole: 'люк', joint: 'стык / шов', rail_tram: 'рельсы трамвая', rail_train: 'ж/д переезд', rough_patch: 'волнистость', rutting: 'колея', broken: 'разбитый участок', patch: 'заплатка', crack: 'трещина', cobble: 'брусчатка' }
 export const LEVEL_NAMES: Record<string, string> = { light: 'лёгкая', mid: 'средняя', deep: 'глубокая', danger: 'опасная', '': '—' }
 export const STATUS_NAMES: Record<string, string> = { candidate: 'кандидат', confirmed: 'подтверждена', complaint: 'жалоба подана', fixed: 'заделана', false: 'ложная' }
 export const STATUS_TONE: Record<string, 'smooth' | 'warn' | 'crater' | 'info' | 'muted' | 'amber'> = { candidate: 'muted', confirmed: 'crater', complaint: 'info', fixed: 'smooth', false: 'muted' }

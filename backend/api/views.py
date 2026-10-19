@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from fleet.models import Device, Vehicle, CarModel
 from telemetry.models import Trip, RoadEvent, EventCluster, RawUpload
 from brain.models import Question, Label, BrainSnapshot, AlgoVersion
-from brain import services, road_stats, validation
+from brain import services, road_stats, taxonomy, validation
 from .auth import device_required, body
 
 NICK_A = ["Тихий", "Быстрый", "Ночной", "Ясный", "Смелый", "Зоркий"]
@@ -92,7 +92,7 @@ def questions_next(request):
     return JsonResponse({"questions": [dict(
         id=q.pk, lat=q.event.lat, lon=q.event.lon, speed_kmh=q.event.speed_kmh, at=q.event.at.isoformat(),
         wave=q.event.wave, guess=q.event.type, guess_level=q.event.level,
-        options=["pothole_light", "pothole_mid", "pothole_deep", "bump", "manhole", "rail", "joint", "nothing", "not_sure"]) for q in qs]})
+        options=taxonomy.driver_options()) for q in qs]})
 
 
 @csrf_exempt
@@ -103,14 +103,18 @@ def question_answer(request, qid):
     if not q:
         return JsonResponse({"error": "not found"}, status=404)
     a = body(request).get("answer", "not_sure")
+    if a not in taxonomy.ACCEPTED:
+        return JsonResponse({"error": "answer: " + ", ".join(taxonomy.driver_options())}, status=400)
+    lab = taxonomy.norm(a)
     q.answer = a; q.status = "skipped" if a == "not_sure" else "answered"; q.answered_at = timezone.now(); q.save()
     if a != "not_sure":
-        e = q.event; e.user_label = a; e.save(update_fields=["user_label"])
-        Label.objects.create(event=e, source="driver", label="noise" if a == "nothing" else a, features=e.features, trip_key=str(e.trip_id))
-        if a == "nothing" and e.cluster and e.cluster.passes <= 1:
-            e.cluster.status = "false"; e.cluster.save()
-        elif e.cluster and a != "nothing":
-            road_stats.refine_cluster_type(e.cluster, a)
+        e = q.event; e.user_label = lab; e.save(update_fields=["user_label"])
+        Label.objects.create(event=e, source="driver", label=lab, features=e.features, trip_key=str(e.trip_id))
+        if not taxonomy.is_road(lab):
+            if e.cluster and e.cluster.passes <= 1 and lab in ("noise", "handled", "curb", "braking"):
+                e.cluster.status = "false"; e.cluster.save()
+        elif e.cluster:
+            road_stats.refine_cluster_type(e.cluster, lab)
         request.device.trust = min(1.0, request.device.trust + 0.01); request.device.save(update_fields=["trust"])
     return JsonResponse({"ok": True})
 
@@ -148,7 +152,7 @@ def ahead(request):
     return JsonResponse({"ahead": out[:5]})
 
 
-MARK_KINDS = {"pothole", "deep", "bump", "manhole", "not_pothole"}
+MARK_KINDS = set(taxonomy.LABEL_KEYS) | set(taxonomy.ROAD_RATINGS) | {"pothole", "deep", "not_pothole"}
 
 
 @csrf_exempt

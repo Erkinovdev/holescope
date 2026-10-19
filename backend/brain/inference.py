@@ -58,3 +58,24 @@ def reprocess_events(limit: int | None = None) -> dict:
             c.status = "false"
             c.save(update_fields=["status"])
     return dict(version=av.version, updated=upd, demoted=dem)
+
+
+_type_cache: dict = {}
+
+
+def active_type_model():
+    """(AlgoVersion, модель) активной версии «types» или (None, None) — тогда работают правила."""
+    av = AlgoVersion.objects.filter(active=True, kind="types").first()
+    if not av or not av.model_blob:
+        return None, None
+    with _lock:
+        if _type_cache.get("id") != av.pk:
+            _type_cache.clear()
+            _type_cache.update(id=av.pk, model=pickle.loads(bytes(av.model_blob)))
+        return av, _type_cache["model"]
+
+
+def predict_type(model, features: dict, wave, ctx: dict | None) -> dict[str, float]:
+    from .training import type_vec
+    p = model.predict_proba(np.array([type_vec(features, wave, ctx)]))[0]
+    return {str(c): round(float(v), 3) for c, v in zip(model.classes_, p)}

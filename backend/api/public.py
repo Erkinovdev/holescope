@@ -101,6 +101,8 @@ def weekly_report(request):
                          "km": round(sum(Trip.objects.filter(started_at__gte=since).values_list("distance_km", flat=True)), 1)})
 
 
+from brain import taxonomy  # noqa: E402
+
 DICTIONARIES = {
     "event_types": {k: v for k, v in EventCluster.TYPES},
     "event_levels": {"light": "лёгкая", "mid": "средняя", "deep": "глубокая", "danger": "опасная"},
@@ -114,11 +116,19 @@ DICTIONARIES = {
     "trip_modes": {k: v for k, v in Trip.MODES},
     "complaint_statuses": {k: v for k, v in Complaint.STATUS},
     "complaint_channels": {k: v for k, v in Complaint.CHANNELS},
+    "labels": {i.key: i.ru for i in taxonomy.ITEMS},
+    "label_groups": {k: v[0] for k, v in taxonomy.GROUPS.items()},
+    "road_ratings": {k: v[1] for k, v in taxonomy.ROAD_RATINGS.items()},
 }
 
 
 def dictionaries(request):
     return JsonResponse(DICTIONARIES)
+
+
+def taxonomy_view(request):
+    """Варианты ответа «что это было?» с группами и названиями ru/uz — приложение и админка рисуют интерфейс по этому справочнику."""
+    return JsonResponse(taxonomy.as_json())
 
 
 def car_models(request):

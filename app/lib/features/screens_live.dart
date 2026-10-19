@@ -319,6 +319,26 @@ final questionsProvider = FutureProvider.autoDispose<List<QuestionDto>>((ref) as
   }
 });
 
+/// Справочник вариантов (с сервера); если нет связи — null, экран использует встроенные основные варианты.
+final taxonomyProvider = FutureProvider.autoDispose<Taxonomy?>((ref) async {
+  final eng = ref.read(engineProvider);
+  try {
+    return Taxonomy.fromJson(await eng.api.taxonomy());
+  } catch (_) {
+    return null;
+  }
+});
+
+class Taxonomy {
+  Taxonomy(this.items, this.groups);
+  final Map<String, ({String ru, String uz, String group, String level})> items;
+  final Map<String, ({String ru, String uz})> groups;
+  factory Taxonomy.fromJson(Map<String, dynamic> j) => Taxonomy(
+        {for (final i in j['items'] as List) (i as Map)['key'] as String: (ru: i['ru'] as String, uz: i['uz'] as String, group: i['group'] as String, level: (i['level'] as String?) ?? '')},
+        {for (final e in (j['groups'] as Map).entries) e.key as String: (ru: (e.value as Map)['ru'] as String, uz: (e.value as Map)['uz'] as String)},
+      );
+}
+
 class QuestionScreen extends ConsumerStatefulWidget {
   const QuestionScreen({super.key});
   @override
@@ -327,6 +347,7 @@ class QuestionScreen extends ConsumerStatefulWidget {
 
 class _QuestionScreenState extends ConsumerState<QuestionScreen> {
   int idx = 0;
+  bool more = false;
 
   Future<void> _answer(QuestionDto q, String a) async {
     final eng = ref.read(engineProvider);
@@ -344,7 +365,9 @@ class _QuestionScreenState extends ConsumerState<QuestionScreen> {
     final l = AppLocalizations.of(context);
     final c = context.hp;
     final qs = ref.watch(questionsProvider);
-    final labels = {
+    final tax = ref.watch(taxonomyProvider).value;
+    final isUz = Localizations.localeOf(context).languageCode == 'uz';
+    final fallback = {
       'pothole_light': (l.optPotholeLight, Tone.minor),
       'pothole_mid': (l.optPotholeMid, Tone.minor),
       'pothole_deep': (l.optPotholeDeep, Tone.major),
@@ -352,6 +375,16 @@ class _QuestionScreenState extends ConsumerState<QuestionScreen> {
       'manhole': (l.optManhole, Tone.info),
       'rail': (l.optRail, Tone.amber),
     };
+    String nameOf(String k) {
+      final it = tax?.items[k];
+      return it == null ? (fallback[k]?.$1 ?? k) : (isUz ? it.uz : it.ru);
+    }
+
+    Tone toneOf(String k) {
+      final lv = tax?.items[k]?.level ?? '';
+      return switch (lv) { 'danger' || 'deep' => Tone.major, 'mid' => Tone.minor, 'light' => Tone.amber, _ => fallback[k]?.$2 ?? Tone.info };
+    }
+
     return HpPage(
       child: HpBody(top: 20, children: [
         HpTitle(l.questionTitle),
@@ -364,19 +397,34 @@ class _QuestionScreenState extends ConsumerState<QuestionScreen> {
             final q = list[idx];
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
               HpCard(padding: 12, child: SizedBox(height: 120, child: CustomPaint(painter: WavePainter(q.wave, c.amber, c.line), size: Size.infinite))),
-              Wrap(spacing: 10, runSpacing: 10, children: [
-                for (final e in labels.entries)
-                  SizedBox(
-                    width: (MediaQuery.sizeOf(context).width - 50) / 2,
-                    child: HpCard(
-                      radius: 16,
-                      border: true,
-                      padding: 14,
-                      onTap: () => _answer(q, e.key),
-                      child: Row(spacing: 10, children: [HpDot(e.value.$2, size: 10), Expanded(child: Text(e.value.$1, style: HpText.s(c.text, 14, FontWeight.w600)))]),
-                    ),
-                  ),
-              ]),
+              Builder(builder: (context) {
+                final opts = [for (final o in q.options) if (o != 'noise' && o != 'not_sure' && o != 'nothing') o];
+                final main = opts.take(6).toList();
+                final rest = opts.skip(6).toList();
+                Widget card(String k) => SizedBox(
+                      width: (MediaQuery.sizeOf(context).width - 50) / 2,
+                      child: HpCard(
+                        radius: 16,
+                        border: true,
+                        padding: 14,
+                        onTap: () => _answer(q, k),
+                        child: Row(spacing: 10, children: [HpDot(toneOf(k), size: 10), Expanded(child: Text(nameOf(k), style: HpText.s(c.text, 14, FontWeight.w600)))]),
+                      ),
+                    );
+                final groups = <String, List<String>>{};
+                for (final k in rest) {
+                  groups.putIfAbsent(tax?.items[k]?.group ?? 'other', () => []).add(k);
+                }
+                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+                  Wrap(spacing: 10, runSpacing: 10, children: [for (final k in main) card(k)]),
+                  if (rest.isNotEmpty) HpButton(more ? l.optLess : l.optMore, kind: HpButtonKind.secondary, onPressed: () => setState(() => more = !more)),
+                  if (more)
+                    for (final g in groups.entries) ...[
+                      Text(isUz ? (tax?.groups[g.key]?.uz ?? g.key) : (tax?.groups[g.key]?.ru ?? g.key), style: HpText.s(c.muted, 13, FontWeight.w600)),
+                      Wrap(spacing: 10, runSpacing: 10, children: [for (final k in g.value) card(k)]),
+                    ],
+                ]);
+              }),
               HpButton(l.optNothing, kind: HpButtonKind.secondary, onPressed: () => _answer(q, 'nothing')),
               HpButton(l.optNotSure, kind: HpButtonKind.secondary, onPressed: () => _answer(q, 'not_sure')),
             ]);
@@ -489,6 +537,14 @@ class SettingsScreen extends ConsumerWidget {
         HpToggleRow(label: l.setVoice, value: s.voice, onChanged: (v) => n.update((x) => x.copyWith(voice: v))),
         HpToggleRow(label: l.setHoliAsk, value: s.holiAsk, onChanged: (v) => n.update((x) => x.copyWith(holiAsk: v))),
         HpToggleRow(label: l.setHoliWake, value: s.holiWake, onChanged: (v) => n.update((x) => x.copyWith(holiWake: v))),
+        HpNavRow(
+          label: '${l.setHoliEngine}: ${switch (s.holiEngine) { 'device' => l.holiEngineDevice, 'cloud' => l.holiEngineCloud, _ => l.holiEngineAuto }}',
+          onTap: () async {
+            final v = await pick<String>([(l.holiEngineAuto, 'auto'), (l.holiEngineDevice, 'device'), (l.holiEngineCloud, 'cloud')], s.holiEngine);
+            if (v != null) n.update((x) => x.copyWith(holiEngine: v));
+          },
+        ),
+        HpNavRow(label: l.holiCheck, onTap: () => context.push('/voice-check')),
         HpToggleRow(label: l.setBeep, value: s.beep, onChanged: (v) => n.update((x) => x.copyWith(beep: v))),
         HpNavRow(
           label: l.setWarnDistance(s.warnDistanceM),

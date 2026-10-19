@@ -20,6 +20,7 @@ services:
       PG_HOST: db
       PG_NAME: ${PG_NAME:-holescope}
       PG_USER: ${PG_USER:-holescope}
+      STT_URL: ${STT_URL:-}
     depends_on:
       db:
         condition: service_healthy
@@ -54,6 +55,16 @@ services:
       - web
     ports:
       - "${ADMIN_PORT:-8020}:80"
+
+  # Распознавание речи Холи на сервере (Whisper). Внутренний сервис, наружу не открыт. Включается: COMPOSE_PROFILES=prod,stt и STT_URL=http://stt:9000
+  stt:
+    build:
+      context: ./stt
+      args:
+        STT_MODEL: ${STT_MODEL:-base}
+    profiles: ["stt"]
+    restart: unless-stopped
+    mem_limit: 1500m
 
   # HTTPS (Let's Encrypt) перед админкой и API; включается только на сервере: COMPOSE_PROFILES=prod, DOMAIN=...
   caddy:
