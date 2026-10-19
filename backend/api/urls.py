@@ -53,6 +53,7 @@ urlpatterns = [
     path("admin/users/<int:uid>/password", aa.user_password),
     path("admin/audit", aa.audit_list),
     path("admin/brain/summary", ab.summary),
+    path("admin/brain/readiness", ab.readiness_view),
     path("admin/brain/timeline", ab.timeline),
     path("admin/brain/graph", ab.graph),
     path("admin/brain/questions", ab.questions),

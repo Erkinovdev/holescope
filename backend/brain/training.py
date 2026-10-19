@@ -52,9 +52,27 @@ def _prf(y, p):
     return dict(precision=float(precision_score(y, p, zero_division=0)), recall=float(recall_score(y, p, zero_division=0)), f1=float(f1_score(y, p, zero_division=0)))
 
 
-def _model():
-    from sklearn.ensemble import GradientBoostingClassifier
-    return GradientBoostingClassifier(n_estimators=120, max_depth=3, learning_rate=0.08, random_state=0)
+def _candidates():
+    """Несколько простых моделей: на малой разметке побеждает не всегда сложная. Выбираем по честной проверке."""
+    from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    return {
+        "gbm": lambda: GradientBoostingClassifier(n_estimators=120, max_depth=3, learning_rate=0.08, random_state=0),
+        "forest": lambda: RandomForestClassifier(n_estimators=200, max_depth=5, min_samples_leaf=2, class_weight="balanced", random_state=0),
+        "logistic": lambda: make_pipeline(StandardScaler(), LogisticRegression(C=0.5, class_weight="balanced", max_iter=500)),
+    }
+
+
+def _importances(model) -> dict:
+    """Какие признаки важнее всего для решения (для объяснения в админке)."""
+    est = model[-1] if hasattr(model, "steps") else model
+    imp = getattr(est, "feature_importances_", None)
+    if imp is None:
+        imp = np.abs(getattr(est, "coef_", [np.zeros(len(FEATURES))])[0])
+    tot = float(np.sum(imp)) or 1.0
+    return {k: round(float(v) / tot, 3) for k, v in sorted(zip(FEATURES, imp), key=lambda kv: -kv[1])}
 
 
 @transaction.atomic
@@ -73,30 +91,26 @@ def train(min_labels: int = MIN_LABELS) -> TrainingRun:
     # честная проверка: группы = поездки; если крупных поездок меньше двух — только отчёт по блокам, без включения
     enough_trips = len(big) >= MIN_TRIPS
     folds = min(5, len(set(g))) if enough_trips else 0
-    pred = np.zeros(len(y), int)
-    cv_kind = "leave-trip-out"
-    if enough_trips and folds >= 2:
-        for tr, te in GroupKFold(n_splits=folds).split(X, y, g):
-            if len(set(y[tr])) < 2:
-                pred[te] = rule[te]
-                continue
-            pred[te] = _model().fit(X[tr], y[tr]).predict(X[te])
-    else:
-        # одна крупная поездка: оценка по 5 блокам подряд (слабее, не годится для включения)
-        cv_kind = "blocks-of-one-trip"
+    cv_kind = "leave-trip-out" if (enough_trips and folds >= 2) else "blocks-of-one-trip"
+    if cv_kind == "leave-trip-out":
+        splits = list(GroupKFold(n_splits=folds).split(X, y, g))
+    else:  # одна крупная поездка: оценка по 5 блокам подряд (слабее, не годится для включения)
         blocks = np.arange(len(y)) * 5 // len(y)
-        for b in range(5):
-            tr, te = blocks != b, blocks == b
-            if len(set(y[tr])) < 2:
-                pred[te] = rule[te]
-                continue
-            pred[te] = _model().fit(X[tr], y[tr]).predict(X[te])
-    m_new, m_rule = _prf(y, pred), _prf(y, rule)
-    final = _model().fit(X, y)
+        splits = [(np.where(blocks != b)[0], np.where(blocks == b)[0]) for b in range(5)]
+
+    def cv_pred(factory):
+        pred = np.zeros(len(y), int)
+        for tr, te in splits:
+            pred[te] = rule[te] if len(set(y[tr])) < 2 else factory().fit(X[tr], y[tr]).predict(X[te])
+        return pred
+    scored = {name: _prf(y, cv_pred(f)) for name, f in _candidates().items()}
+    best = max(scored, key=lambda n: scored[n]["f1"])
+    m_new, m_rule = scored[best], _prf(y, rule)
+    final = _candidates()[best]().fit(X, y)
     ver = f"gbm-{AlgoVersion.objects.filter(kind='gbm').count() + 1}"
     gain = m_new["f1"] - m_rule["f1"]
     activate = enough_trips and cv_kind == "leave-trip-out" and gain >= MIN_F1_GAIN
-    metrics = dict(info, cv=cv_kind, model=m_new, rules=m_rule, f1_gain=gain, activated=bool(activate))
+    metrics = dict(info, cv=cv_kind, model_kind=best, candidates=scored, importances=_importances(final), model=m_new, rules=m_rule, f1_gain=gain, activated=bool(activate))
     if activate:
         AlgoVersion.objects.filter(active=True).update(active=False)
     av = AlgoVersion.objects.create(version=ver, kind="gbm", params={"features": FEATURES}, model_blob=pickle.dumps(final), metrics=metrics, active=bool(activate),

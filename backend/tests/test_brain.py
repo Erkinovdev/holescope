@@ -311,3 +311,10 @@ def test_label_import_roundtrip(network):
     e = RoadEvent.objects.get()
     Label.objects.create(event=e, source="driver", label="manhole", features=e.features, trip_key=str(e.trip_id))
     assert Label.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_readiness_and_explain_endpoints():
+    from brain.explain import readiness
+    r = readiness()
+    assert r["state"] == "rules" and r["steps"] and 0 <= r["progress"] <= 100

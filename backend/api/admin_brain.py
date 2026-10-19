@@ -65,6 +65,12 @@ def summary(request):
 
 
 @role_required("analyst")
+def readiness_view(request):
+    from brain.explain import readiness
+    return JsonResponse(readiness())
+
+
+@role_required("analyst")
 def timeline(request):
     runs = [dict(id=r.pk, at=iso(r.created), n_labels=r.n_labels, metrics=r.metrics, log=r.log, version=r.algo.version if r.algo else None) for r in TrainingRun.objects.order_by("-created")[:50]]
     snaps = [dict(day=s.day.isoformat(), events=s.events_total, clusters=s.clusters_total, labels=s.labels_total, km=round(s.km_total, 1), devices=s.devices_active, precision=s.precision, recall=s.recall)

@@ -4,7 +4,7 @@ import Brain3D from '../components/Brain3D'
 import { BarChart, LineChart, SignalChart, Wave } from '../components/Charts'
 import ClusterPanel from '../components/ClusterPanel'
 import { Button, Card, CardTitle, Chip, Empty, ErrorBox, Field, Input, KV, Kpi, PageHeader, Segmented, Spinner, Table, useToast } from '../components/ui'
-import { api, type AlgoVersion, type GraphEdge, type GraphNode } from '../lib/api'
+import { api, type AlgoVersion, type Readiness, type GraphEdge, type GraphNode } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { fmtDate, fmtDateTime, fmtNum, ROUGH_COLORS, TYPE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
@@ -33,6 +33,7 @@ export default function Brain() {
           <Kpi label="Дорожная сеть" value={fmtNum(Number(c.segments))} sub={`оценено сегментов: ${fmtNum(Number(c.segments_scored))}`} tone="smooth" />
         </div>
       )}
+      <ReadinessCard />
       <div className="mb-4"><Segmented label="Раздел" value={tab} onChange={setTab} options={TABS} /></div>
       {tab === 'graph' && <GraphTab />}
       {tab === 'timeline' && <TimelineTab />}
@@ -309,5 +310,26 @@ function ParamsTab() {
         )}
       </Card>
     </div>
+  )
+}
+
+// ───────────────────────── «Простыми словами» ─────────────────────────
+function ReadinessCard() {
+  const r = useGet<Readiness>('/admin/brain/readiness')
+  if (!r.data) return null
+  const d = r.data
+  const tone = d.state === 'learned' ? 'smooth' : d.state === 'ready' ? 'amber' : 'info'
+  return (
+    <Card className="mb-5">
+      <CardTitle right={<Chip tone={tone}>{d.state === 'learned' ? 'модель работает' : d.state === 'ready' ? 'готово к обучению' : 'учится'}</Chip>}>Простыми словами</CardTitle>
+      <p className="mb-3 text-base font-medium">{d.title}</p>
+      <div className="mb-1 flex justify-between text-xs text-muted"><span>Готовность к обучению</span><span>{d.progress}%</span></div>
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-raised" role="progressbar" aria-valuenow={d.progress} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full rounded-full bg-[var(--amber)] transition-all" style={{ width: `${d.progress}%` }} />
+      </div>
+      <p className="mb-1 text-sm font-semibold">Что делать дальше</p>
+      <ol className="list-decimal pl-5 text-sm text-muted">{d.steps.map((x, i) => <li key={i}>{x}</li>)}</ol>
+      <p className="mt-3 text-xs text-muted">Разметка: {d.facts.labels} (дорога {d.facts.road} · не дорога {d.facts.not_road}). {d.last_training ?? 'Обучений ещё не было.'}</p>
+    </Card>
   )
 }

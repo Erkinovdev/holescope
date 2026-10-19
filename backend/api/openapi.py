@@ -64,6 +64,7 @@ ADMIN = [
     ("/admin/users/{uid}/password", "post", "Сменить пароль сотрудника", "admin", "password"),
     ("/admin/audit", "get", "Журнал действий", "admin", None),
     ("/admin/brain/summary", "get", "Сводка «Мозга»", "analyst", None),
+    ("/admin/brain/readiness", "get", "Готовность модели простыми словами и следующие шаги", "analyst", None),
     ("/admin/brain/timeline", "get", "Версии, метрики, снимки роста", "analyst", None),
     ("/admin/brain/graph", "get", "Граф для 3D-визуализации", "analyst", None),
     ("/admin/brain/questions", "get", "Очередь вопросов и разметки", "analyst", None),

@@ -69,8 +69,13 @@ export interface Cluster {
 export interface ClusterEvent {
   id: number; at: string; device: string; device_id: number; speed_kmh: number; peak: number; score: number; type: string; level: string; confidence: number
   user_label: string; trip: number; wave: number[]; algo_version: string; features: Record<string, number | null>
+  explain: { verdict: string; reasons: { ok: boolean; text: string }[] }
 }
-export interface ClusterDetail extends Cluster { events: ClusterEvent[]; type_votes: Record<string, number>; complaints: number; quiet: { at: string; speed_kmh: number; device_id: number }[] }
+export interface Readiness {
+  state: 'rules' | 'ready' | 'learned'; title: string; progress: number; steps: string[]; last_training: string | null
+  facts: { labels: number; road: number; not_road: number; trips_ready: number; trips_needed: number; labels_needed: number; open_questions: number }
+}
+export interface ClusterDetail extends Cluster { why: string; events: ClusterEvent[]; type_votes: Record<string, number>; complaints: number; quiet: { at: string; speed_kmh: number; device_id: number }[] }
 export interface Overview {
   days: number
   kpi: { trips: number; km: number; events: number; clusters_total: number; confirmed: number; fixed: number; candidates: number; devices_active: number; devices_total: number; labels: number }

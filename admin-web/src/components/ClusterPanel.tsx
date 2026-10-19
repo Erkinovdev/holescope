@@ -32,6 +32,7 @@ export default function ClusterPanel({ id, onChanged, onMerge }: { id: number; o
           <Chip tone="info">{c.devices} устр. · {c.passes} проездов</Chip>
         </div>
       </div>
+      {c.why && <p className="rounded-2xl bg-raised p-3 text-sm"><b>Почему так: </b>{c.why}</p>}
       <KV rows={[
         ['Уверенность', c.confidence.toFixed(2)],
         ['Сила удара (медиана)', c.score_median],
@@ -75,6 +76,10 @@ export default function ClusterPanel({ id, onChanged, onMerge }: { id: number; o
                 <Link to={`/trips/${e.trip}`} className="ml-auto hover:underline">поездка #{e.trip}</Link>
               </div>
               <Wave wave={e.wave} />
+              {e.explain && <details className="mt-2 text-sm">
+                <summary className="cursor-pointer font-medium">{e.explain.verdict}</summary>
+                <ul className="mt-1 flex flex-col gap-1 text-muted">{e.explain.reasons.map((r, i) => <li key={i}><span aria-hidden>{r.ok ? '✓' : '✗'}</span> <span className="sr-only">{r.ok ? 'за: ' : 'против: '}</span>{r.text}</li>)}</ul>
+              </details>}
             </div>
           ))}
         </div>
