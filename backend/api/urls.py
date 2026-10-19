@@ -13,6 +13,7 @@ urlpatterns = [
     path("questions/<int:qid>/answer", views.question_answer),
     path("map/clusters", views.map_clusters),
     path("map/segments", public.map_segments),
+    path("map/cell", public.map_cell),
     path("search", public.search),
     path("clusters/<int:cid>", public.cluster_detail),
     path("clusters/<int:cid>/report", public.cluster_report),

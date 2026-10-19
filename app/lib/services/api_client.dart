@@ -240,6 +240,21 @@ class ApiClient {
         (d) => [for (final r in d['segments'] as List) SegmentDto.fromRow(r as List)],
       );
 
+  /// Одна ячейка карты 0.01°: целые смещения от угла ячейки в миллионных долях градуса (компактно, кэшируется).
+  /// [set]: major — только магистрали, main — плюс местные, all — все дороги.
+  Future<List<SegmentDto>> mapCell(int i, int j, {String set = 'all', bool scored = false}) => _run(
+        () => _dio.get('/api/v1/map/cell', queryParameters: {'i': i, 'j': j, 'set': set, if (scored) 'scored': 1}),
+        (d) {
+          final o = d['o'] as List;
+          final la0 = (o[0] as num).toDouble(), lo0 = (o[1] as num).toDouble();
+          const u = 1e-6;
+          return [
+            for (final r in d['s'] as List)
+              SegmentDto((r as List)[0] as int, la0 + (r[1] as num) * u, lo0 + (r[2] as num) * u, la0 + (r[3] as num) * u, lo0 + (r[4] as num) * u, r[5] as String, r[6] as String, r[7] as int),
+          ];
+        },
+      );
+
   Future<List<StreetRank>> rankingsStreets({String scope = 'city', String? district, int days = 30, int limit = 20}) => _run(
         () => _dio.get('/api/v1/rankings/streets', queryParameters: {'scope': scope, if (district != null) 'district': district, 'days': days, 'limit': limit}),
         (d) => [

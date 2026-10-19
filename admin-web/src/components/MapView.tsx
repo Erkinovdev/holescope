@@ -13,7 +13,10 @@ setWorkerUrl(workerUrl)
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'
 
-interface SegResp { segments: [number, number, number, number, number, string, string, number][] }
+// ячейка карты 0.01°: целые смещения от угла ячейки в миллионных долях градуса (см. /map/cell на сервере)
+interface CellResp { o: [number, number]; u: number; s: [number, number, number, number, number, string, string, number][] }
+const CELL = 0.01
+type Feat = { type: 'Feature'; properties: { cls: string; rc: string; dir: number }; geometry: { type: 'LineString'; coordinates: number[][] } }
 
 export interface MapLayers { roads: boolean; roughness: boolean; clusters: boolean }
 
@@ -24,6 +27,8 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<MLMap | null>(null)
   const clustersRef = useRef<Cluster[]>([])
+  const cellCache = useRef(new Map<string, { at: number; feats: Feat[] }>())
+  const loadGen = useRef(0)
   const [status, setStatus] = useState<string>('')
   const propsRef = useRef({ layers, statuses, onSelect, onMove })
   propsRef.current = { layers, statuses, onSelect, onMove }
@@ -91,19 +96,41 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
     if (!m || !m.getSource('segs')) return
     const b = m.getBounds()
     const z = m.getZoom()
-    const ctr = m.getCenter()
-    // сервер принимает bbox ≤ 0.1° — ограничиваем окно вокруг центра (на больших экранах край карты догружается при сдвиге)
-    const bb = { s: Math.max(b.getSouth(), ctr.lat - 0.045), n: Math.min(b.getNorth(), ctr.lat + 0.045), w: Math.max(b.getWest(), ctr.lng - 0.045), e: Math.min(b.getEast(), ctr.lng + 0.045) }
-    const bbox = `${bb.s},${bb.w},${bb.n},${bb.e}`
+    const gen = ++loadGen.current
+    const bbox = `${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}`
     const L = propsRef.current.layers
     setStatus('загрузка…')
     try {
       if (z >= 11.3 && (L.roads || L.roughness)) {
-        const r = await api.get<SegResp>('/map/segments', { bbox, limit: 8000, scored: L.roads ? undefined : 1 })
-        const feats = r.segments.filter((s) => (s[5] === '' ? L.roads : L.roughness)).map((s) => ({
-          type: 'Feature' as const, properties: { cls: s[5], rc: s[6], dir: s[7] }, geometry: { type: 'LineString' as const, coordinates: [[s[2], s[1]], [s[4], s[3]]] },
-        }))
-        ;(m.getSource('segs') as GeoJSONSource).setData({ type: 'FeatureCollection', features: feats })
+        // карта грузится ячейками: уже загруженные берутся из кэша, запрашиваются только недостающие; на дальнем масштабе — только магистрали
+        const set = z >= 14 ? 'all' : z >= 12.5 ? 'main' : 'major'
+        const scored = L.roads ? 0 : 1
+        const i0 = Math.floor(b.getSouth() / CELL), i1 = Math.floor(b.getNorth() / CELL)
+        const j0 = Math.floor(b.getWest() / CELL), j1 = Math.floor(b.getEast() / CELL)
+        const keys: { i: number; j: number; key: string }[] = []
+        for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) keys.push({ i, j, key: `${i}:${j}:${set}:${scored}` })
+        const ctr = m.getCenter()
+        keys.sort((p, q) => Math.hypot((p.i + 0.5) * CELL - ctr.lat, (p.j + 0.5) * CELL - ctr.lng) - Math.hypot((q.i + 0.5) * CELL - ctr.lat, (q.j + 0.5) * CELL - ctr.lng))
+        const now = Date.now()
+        const need = keys.slice(0, 40).filter((k) => { const c = cellCache.current.get(k.key); return !c || now - c.at > 600_000 })
+        const draw = () => {
+          const feats: Feat[] = []
+          for (const k of keys) {
+            const c = cellCache.current.get(k.key)
+            if (c) for (const f of c.feats) if (f.properties.cls === '' ? L.roads : L.roughness) feats.push(f)
+          }
+          ;(m.getSource('segs') as GeoJSONSource).setData({ type: 'FeatureCollection', features: feats })
+        }
+        for (let n = 0; n < need.length; n += 6) {
+          if (gen !== loadGen.current) return // пользователь уже сдвинул карту — этот проход устарел
+          await Promise.all(need.slice(n, n + 6).map(async (k) => {
+            const r = await api.get<CellResp>('/map/cell', { i: k.i, j: k.j, set, scored: scored || undefined })
+            cellCache.current.set(k.key, { at: Date.now(), feats: r.s.map((x) => ({ type: 'Feature' as const, properties: { cls: x[5], rc: x[6], dir: x[7] }, geometry: { type: 'LineString' as const, coordinates: [[r.o[1] + x[2] * r.u, r.o[0] + x[1] * r.u], [r.o[1] + x[4] * r.u, r.o[0] + x[3] * r.u]] } })) })
+          }))
+          draw()
+        }
+        draw()
+        if (cellCache.current.size > 160) { const old = [...cellCache.current.entries()].sort((p, q) => p[1].at - q[1].at).slice(0, 60); for (const [k] of old) cellCache.current.delete(k) }
         m.setLayoutProperty('roads', 'visibility', L.roads ? 'visible' : 'none')
         m.setLayoutProperty('rough', 'visibility', L.roughness ? 'visible' : 'none')
       } else {

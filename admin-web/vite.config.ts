@@ -10,7 +10,7 @@ export default defineConfig({
   server: { port: 5180, proxy: { '/api': API, '/media': API } },
   build: {
     chunkSizeWarningLimit: 1500,
-    rollupOptions: { output: { manualChunks: (id: string) => (/node_modules[\/](three|@react-three)/.test(id) ? 'three' : /node_modules[\/]maplibre-gl/.test(id) ? 'maplibre' : undefined) } },
+    rollupOptions: { output: { manualChunks: (id: string) => (/node_modules[\/]maplibre-gl/.test(id) ? 'maplibre' : undefined) } },
   },
   test: { environment: 'jsdom', globals: true, setupFiles: ['./src/test/setup.ts'], css: false },
 })

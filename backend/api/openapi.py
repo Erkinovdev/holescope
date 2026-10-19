@@ -22,6 +22,7 @@ OPS = [
     ("/questions/{qid}/answer", "post", "brain", "Ответ водителя → разметка", "device", [P("qid", "id вопроса")], "answer"),
     ("/map/clusters", "get", "map", "Ямы в прямоугольнике", None, [Q("bbox", "min_lat,min_lon,max_lat,max_lon", True), Q("status", "через запятую", False)], None),
     ("/map/segments", "get", "map", "Векторная карта: сегменты дорог с классом ровности A–E", None, [Q("bbox", "min_lat,min_lon,max_lat,max_lon (≤0.1°)", True), Q("scored", "1 — только оценённые", False), Q("limit", "до 8000", False, "integer")], None),
+    ("/map/cell", "get", "map", "Сегменты одной ячейки сетки 0.01° (быстрая карта, кэш 5 минут): i, j, set=major|main|all, scored", None, [Q("i", "floor(lat/0.01)", True), Q("j", "floor(lon/0.01)", True), Q("set", "major | main | all", False), Q("scored", "1 — только оценённые", False)], None),
     ("/search", "get", "map", "Поиск улицы или района по названию", None, [Q("q", "название, ≥2 символа", True)], None),
     ("/clusters/{cid}", "get", "map", "Карточка ямы: улица, район, статус, подтверждения", None, [P("cid", "id ямы")], None),
     ("/clusters/{cid}/report", "post", "map", "Отметка «яма на месте» / «заделана»", "device", [P("cid", "id ямы")], "state: present | fixed"),

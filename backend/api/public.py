@@ -1,9 +1,11 @@
 """Публичные эндпоинты этапа 3: рейтинги улиц и районов, отчёт недели, жалобы, справочники, статистика устройства."""
 from __future__ import annotations
-from collections import defaultdict
+import json
+import time
+from collections import OrderedDict, defaultdict
 from datetime import timedelta
 import numpy as np
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -233,6 +235,51 @@ def map_segments(request):
     rows = qs.order_by("road__road_class", "-ri_n").values_list("id", "lat_a", "lon_a", "lat_b", "lon_b", "cls", "road__road_class", "direction")[:limit]
     return JsonResponse({"segments": [[i, la, lo, lb, lb2, cls, rc, dr] for i, la, lo, lb, lb2, cls, rc, dr in rows], "limit": limit,
                          "fields": ["id", "lat_a", "lon_a", "lat_b", "lon_b", "cls", "road_class", "direction"]})
+
+
+# ───────────────────────── карта по ячейкам (быстрая, с кэшем) ─────────────────────────
+CELL = 0.01          # ячейка ≈ 1.1 × 0.8 км: на экране их 4–12, подгружаются только недостающие
+CELL_TTL = 300       # секунд в серверном и браузерном кэше
+_cells: "OrderedDict[tuple, tuple[float, bytes]]" = OrderedDict()
+CLASS_SETS = {"major": ("R", "A", "B"), "main": ("R", "A", "B", "C"), "all": None}
+
+
+def map_cell(request):
+    """Сегменты одной ячейки сетки 0.01°: ?i=<floor(lat/0.01)>&j=<floor(lon/0.01)>&set=major|main|all&scored=0|1.
+    Ответ компактный (целые: смещения от угла ячейки в миллионных долях градуса), кэшируется на сервере и в браузере/приложении."""
+    try:
+        i, j = int(request.GET["i"]), int(request.GET["j"])
+    except (KeyError, ValueError):
+        return JsonResponse({"error": "i, j — целые номера ячейки"}, status=400)
+    if not (3600 <= i <= 4600 and 5500 <= j <= 8000):
+        return JsonResponse({"error": "ячейка вне региона"}, status=400)
+    cset = request.GET.get("set", "all")
+    if cset not in CLASS_SETS:
+        return JsonResponse({"error": "set: major | main | all"}, status=400)
+    scored = request.GET.get("scored") == "1"
+    key = (i, j, cset, scored)
+    now = time.time()
+    hit = _cells.get(key)
+    if hit and now - hit[0] < CELL_TTL:
+        body = hit[1]
+        _cells.move_to_end(key)
+    else:
+        la0, lo0 = i * CELL, j * CELL
+        qs = Segment.objects.filter(lat_a__gte=la0, lat_a__lt=la0 + CELL, lon_a__gte=lo0, lon_a__lt=lo0 + CELL)
+        if CLASS_SETS[cset]:
+            qs = qs.filter(road__road_class__in=CLASS_SETS[cset])
+        if scored:
+            qs = qs.exclude(cls="")
+        rows = qs.values_list("id", "lat_a", "lon_a", "lat_b", "lon_b", "cls", "road__road_class", "direction")
+        q = lambda v, o: int(round((v - o) * 1_000_000))
+        seg = [[sid, q(a, la0), q(b, lo0), q(c, la0), q(d, lo0), cls, rc, dr] for sid, a, b, c, d, cls, rc, dr in rows]
+        body = json.dumps({"i": i, "j": j, "o": [la0, lo0], "u": 1e-6, "s": seg}, separators=(",", ":")).encode("utf-8")
+        _cells[key] = (now, body)
+        while len(_cells) > 600:
+            _cells.popitem(last=False)
+    resp = HttpResponse(body, content_type="application/json")
+    resp["Cache-Control"] = f"public, max-age={CELL_TTL}"
+    return resp
 
 
 def search(request):

@@ -38,6 +38,25 @@ class FakeAdapter implements HttpClientAdapter {
         [4, 41.3280, 69.2270, 41.3280, 69.2312, '', 'C', -1],
       ]};
     }
+    if (p.endsWith('/map/cell')) {
+      // ячейка 0.01°: смещения от угла ячейки в миллионных долях градуса
+      final i = o.queryParameters['i'] as int, j = o.queryParameters['j'] as int;
+      final la0 = i * 0.01, lo0 = j * 0.01;
+      int q(double v, double base) => ((v - base) * 1e6).round();
+      final rows = <List<Object>>[];
+      for (final r in [
+        [1, 41.3270, 69.2270, 41.3270, 69.2284, 'A', 'A', 1],
+        [2, 41.3270, 69.2284, 41.3270, 69.2298, 'D', 'A', 1],
+        [3, 41.3270, 69.2298, 41.3270, 69.2312, '', 'B', 1],
+        [4, 41.3280, 69.2270, 41.3280, 69.2312, '', 'C', -1],
+      ]) {
+        final lat = r[1] as double, lon = r[2] as double;
+        if (lat >= la0 && lat < la0 + 0.01 && lon >= lo0 && lon < lo0 + 0.01) {
+          rows.add([r[0] as int, q(lat, la0), q(lon, lo0), q(r[3] as double, la0), q(r[4] as double, lo0), r[5] as String, r[6] as String, r[7] as int]);
+        }
+      }
+      return {'i': i, 'j': j, 'o': [la0, lo0], 'u': 1e-6, 's': rows};
+    }
     if (p.endsWith('/map/clusters')) {
       return {'clusters': [{'id': 1, 'lat': 41.3270, 'lon': 69.2284, 'heading': 90.0, 'type': 'pothole', 'level': 'deep', 'status': 'confirmed', 'passes': 7, 'devices': 7, 'confidence': 0.9, 'safe_speed': 30}]};
     }

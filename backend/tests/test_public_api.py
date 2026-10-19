@@ -177,3 +177,27 @@ def test_search_cluster_detail_and_reports(city):
     assert c.post(f"/api/v1/clusters/{cl.pk}/report", json.dumps({"state": "present"}), content_type=J, headers=hdr(mk_device(nickname="p"))).status_code == 201
     cl.refresh_from_db()
     assert cl.status == "candidate"
+
+
+# ───────────── карта по ячейкам ─────────────
+@pytest.mark.django_db
+def test_map_cell_compact_filtered_and_cached(client):
+    import json as _json
+    from roadnet.models import Road, Segment
+    road = Road.objects.create(code="B001", name_ru="Тест", road_class="B", named=True)
+    minor = Road.objects.create(code="D001", name_ru="Двор", road_class="D", named=False)
+    for k, (r, cls) in enumerate([(road, "C"), (road, ""), (minor, "")]):
+        Segment.objects.create(road=r, index=k, direction=1, lat_a=41.3112 + k * 1e-4, lon_a=69.2793, lat_b=41.3113 + k * 1e-4, lon_b=69.2794, cls=cls)
+    i, j = int(41.3112 / 0.01), int(69.2793 / 0.01)
+    r = client.get(f"/api/v1/map/cell?i={i}&j={j}")
+    assert r.status_code == 200 and "max-age=300" in r["Cache-Control"]
+    d = _json.loads(r.content)
+    assert len(d["s"]) == 3 and d["u"] == 1e-6
+    la = d["o"][0] + d["s"][0][1] * d["u"]
+    assert abs(la - 41.3112) < 2e-6
+    major = _json.loads(client.get(f"/api/v1/map/cell?i={i}&j={j}&set=major").content)
+    assert len(major["s"]) == 2 and all(s[6] in "RAB" for s in major["s"])
+    assert len(_json.loads(client.get(f"/api/v1/map/cell?i={i}&j={j}&scored=1").content)["s"]) == 1
+    assert client.get("/api/v1/map/cell?i=1&j=1").status_code == 400
+    assert client.get("/api/v1/map/cell?i=x&j=1").status_code == 400
+    assert client.get(f"/api/v1/map/cell?i={i}&j={j}&set=bogus").status_code == 400
