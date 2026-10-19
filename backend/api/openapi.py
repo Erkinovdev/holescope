@@ -69,6 +69,8 @@ ADMIN = [
     ("/admin/audit", "get", "Журнал действий", "admin", None),
     ("/admin/brain/summary", "get", "Сводка «Мозга»", "analyst", None),
     ("/admin/brain/evolution", "get", "Эволюция модели: точность догадки на отложенных поездках, динамика, разбивки, матрица ошибок, версии", "analyst", None),
+    ("/admin/badges", "get", "Числа для значков в меню админки (события, жалобы, вопросы)", "analyst", None),
+    ("/admin/system", "get", "Состояние сервисов, объёмы данных, журнал действий", "analyst", None),
     ("/admin/brain/calibration", "get", "Границы уровней ям и классов ровности: текущие, предложенные по разметке, точность", "analyst", None),
     ("/admin/brain/calibration/apply", "post", "Применить границы {kind: levels|ri, bounds}", "admin", "kind, bounds"),
     ("/admin/brain/readiness", "get", "Готовность модели простыми словами и следующие шаги", "analyst", None),
