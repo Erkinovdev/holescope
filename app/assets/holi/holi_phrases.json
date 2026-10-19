@@ -1,0 +1,200 @@
+[
+ {
+  "key": "listening",
+  "ru": "Холи слушает",
+  "uz": "Xoli tinglayapti",
+  "file": "listening"
+ },
+ {
+  "key": "wake_yes",
+  "ru": "Да?",
+  "uz": "Ha?",
+  "file": "wake_yes"
+ },
+ {
+  "key": "wake_listen",
+  "ru": "Слушаю",
+  "uz": "Tinglayapman",
+  "file": "wake_listen"
+ },
+ {
+  "key": "mark_pothole",
+  "ru": "Отметила яму",
+  "uz": "O'ra belgilandi",
+  "file": "mark_pothole"
+ },
+ {
+  "key": "mark_deep",
+  "ru": "Отметила глубокую яму",
+  "uz": "Chuqur o'ra belgilandi",
+  "file": "mark_deep"
+ },
+ {
+  "key": "mark_bump",
+  "ru": "Отметила лежачий полицейский",
+  "uz": "Yotiq politsiyachi belgilandi",
+  "file": "mark_bump"
+ },
+ {
+  "key": "mark_manhole",
+  "ru": "Отметила люк",
+  "uz": "Lyuk belgilandi",
+  "file": "mark_manhole"
+ },
+ {
+  "key": "mark_cancel",
+  "ru": "Убрала отметку",
+  "uz": "Belgi o'chirildi",
+  "file": "mark_cancel"
+ },
+ {
+  "key": "mark_cancel_none",
+  "ru": "Отменять нечего",
+  "uz": "Bekor qiladigan narsa yo'q",
+  "file": "mark_cancel_none"
+ },
+ {
+  "key": "thanks",
+  "ru": "Спасибо, записала",
+  "uz": "Rahmat, yozib oldim",
+  "file": "thanks"
+ },
+ {
+  "key": "ask_confirm",
+  "ru": "Только что была яма? Скажите: да или нет",
+  "uz": "Hozir o'ra bo'ldimi? Ha yoki yo'q deng",
+  "file": "ask_confirm"
+ },
+ {
+  "key": "confirm_yes",
+  "ru": "Записала",
+  "uz": "Yozib oldim",
+  "file": "confirm_yes"
+ },
+ {
+  "key": "confirm_no",
+  "ru": "Хорошо, убрала",
+  "uz": "Yaxshi, o'chirdim",
+  "file": "confirm_no"
+ },
+ {
+  "key": "no_answer",
+  "ru": "Не услышала, пропускаю",
+  "uz": "Eshitmadim, o'tkazib yuboraman",
+  "file": "no_answer"
+ },
+ {
+  "key": "ahead_deep",
+  "ru": "Впереди глубокая яма, снизьте скорость",
+  "uz": "Oldinda chuqur o'ra, tezlikni kamaytiring",
+  "file": "ahead_deep"
+ },
+ {
+  "key": "ahead_bump",
+  "ru": "Впереди лежачий полицейский",
+  "uz": "Oldinda yotiq politsiyachi",
+  "file": "ahead_bump"
+ },
+ {
+  "key": "repeat",
+  "ru": "Не расслышала, повторите",
+  "uz": "Eshitmadim, takrorlang",
+  "file": "repeat"
+ },
+ {
+  "key": "unknown",
+  "ru": "Не поняла. Скажите: яма, люк или лежачий",
+  "uz": "Tushunmadim. Ayting: o'ra, lyuk yoki yotiq politsiyachi",
+  "file": "unknown"
+ },
+ {
+  "key": "km_smooth",
+  "ru": "Последний километр ровный",
+  "uz": "Oxirgi kilometr tekis",
+  "file": "km_smooth"
+ },
+ {
+  "key": "km_rough",
+  "ru": "Последний километр разбитый",
+  "uz": "Oxirgi kilometr buzilgan",
+  "file": "km_rough"
+ },
+ {
+  "key": "trip_done",
+  "ru": "Поездка записана. Хорошей дороги",
+  "uz": "Safar yozildi. Yo'lingiz ravon bo'lsin",
+  "file": "trip_done"
+ },
+ {
+  "key": "ahead_pothole_50",
+  "ru": "Впереди яма, пятьдесят метров",
+  "uz": "Oldinda o'ra, ellik metr",
+  "file": "ahead_pothole_50"
+ },
+ {
+  "key": "ahead_rough_50",
+  "ru": "Впереди разбитый участок, пятьдесят метров",
+  "uz": "Oldinda yo'l buzilgan, ellik metr",
+  "file": "ahead_rough_50"
+ },
+ {
+  "key": "ahead_pothole_100",
+  "ru": "Впереди яма, сто метров",
+  "uz": "Oldinda o'ra, yuz metr",
+  "file": "ahead_pothole_100"
+ },
+ {
+  "key": "ahead_rough_100",
+  "ru": "Впереди разбитый участок, сто метров",
+  "uz": "Oldinda yo'l buzilgan, yuz metr",
+  "file": "ahead_rough_100"
+ },
+ {
+  "key": "ahead_pothole_150",
+  "ru": "Впереди яма, сто пятьдесят метров",
+  "uz": "Oldinda o'ra, yuz ellik metr",
+  "file": "ahead_pothole_150"
+ },
+ {
+  "key": "ahead_rough_150",
+  "ru": "Впереди разбитый участок, сто пятьдесят метров",
+  "uz": "Oldinda yo'l buzilgan, yuz ellik metr",
+  "file": "ahead_rough_150"
+ },
+ {
+  "key": "ahead_pothole_200",
+  "ru": "Впереди яма, двести метров",
+  "uz": "Oldinda o'ra, ikki yuz metr",
+  "file": "ahead_pothole_200"
+ },
+ {
+  "key": "ahead_rough_200",
+  "ru": "Впереди разбитый участок, двести метров",
+  "uz": "Oldinda yo'l buzilgan, ikki yuz metr",
+  "file": "ahead_rough_200"
+ },
+ {
+  "key": "ahead_pothole_250",
+  "ru": "Впереди яма, двести пятьдесят метров",
+  "uz": "Oldinda o'ra, ikki yuz ellik metr",
+  "file": "ahead_pothole_250"
+ },
+ {
+  "key": "ahead_rough_250",
+  "ru": "Впереди разбитый участок, двести пятьдесят метров",
+  "uz": "Oldinda yo'l buzilgan, ikki yuz ellik metr",
+  "file": "ahead_rough_250"
+ },
+ {
+  "key": "ahead_pothole_300",
+  "ru": "Впереди яма, триста метров",
+  "uz": "Oldinda o'ra, uch yuz metr",
+  "file": "ahead_pothole_300"
+ },
+ {
+  "key": "ahead_rough_300",
+  "ru": "Впереди разбитый участок, триста метров",
+  "uz": "Oldinda yo'l buzilgan, uch yuz metr",
+  "file": "ahead_rough_300"
+ }
+]

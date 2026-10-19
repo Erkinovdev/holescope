@@ -12,6 +12,8 @@ from telemetry.models import SegmentScore
 class Command(BaseCommand):
     def handle(self, *a, **kw):
         out = self.stdout.write
+        from telemetry.marks import apply_pending
+        out(f"отметки водителей: {apply_pending(now=timezone.now() + timedelta(hours=3))}")
         out(f"заделаны: {road_stats.evaluate_all_fixed()}")
         recent = timezone.now() - timedelta(days=2)
         seg_ids = SegmentScore.objects.filter(at__gte=recent, segment__isnull=False).values_list("segment_id", flat=True).distinct()

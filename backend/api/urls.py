@@ -7,6 +7,7 @@ urlpatterns = [
     path("me/stats", public.my_stats),
     path("trips", views.upload_trip),
     path("trips/raw", views.upload_raw),
+    path("marks", views.marks_create),
     path("questions/next", views.questions_next),
     path("questions/<int:qid>/answer", views.question_answer),
     path("map/clusters", views.map_clusters),

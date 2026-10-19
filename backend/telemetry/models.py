@@ -144,3 +144,24 @@ class ClusterReport(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["cluster", "at"])]
+
+
+class DriverMark(models.Model):
+    """Голосовая/ручная отметка водителя («яма», «люк», «это не яма»). Привязывается к событию алгоритма этого же устройства
+    (±35 м, ±90 с) и становится разметкой для обучения; если алгоритм яму не нашёл — создаёт/подкрепляет кандидата."""
+    KINDS = [("pothole", "яма"), ("deep", "глубокая яма"), ("bump", "лежачий"), ("manhole", "люк"), ("not_pothole", "это не яма")]
+    device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name="marks")
+    client_id = models.CharField(max_length=64)
+    kind = models.CharField(max_length=12, choices=KINDS)
+    lat = models.FloatField()
+    lon = models.FloatField()
+    heading = models.FloatField(null=True, blank=True)
+    at = models.DateTimeField()
+    created = models.DateTimeField(auto_now_add=True)
+    applied = models.BooleanField(default=False)
+    event = models.ForeignKey(RoadEvent, null=True, blank=True, on_delete=models.SET_NULL, related_name="marks")
+    cluster = models.ForeignKey(EventCluster, null=True, blank=True, on_delete=models.SET_NULL, related_name="marks")
+
+    class Meta:
+        unique_together = [("device", "client_id")]
+        indexes = [models.Index(fields=["applied", "created"])]

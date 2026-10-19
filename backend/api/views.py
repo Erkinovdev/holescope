@@ -1,4 +1,5 @@
 import math, tempfile
+from datetime import timedelta
 from django.conf import settings
 from django.db.models import Count, Avg
 from django.http import JsonResponse
@@ -66,6 +67,8 @@ def upload_trip(request):
     except (KeyError, ValueError, TypeError) as e:
         validation.adjust_trust(request.device, False)
         return JsonResponse({"error": f"bad payload: {e}"}, status=400)
+    from telemetry.marks import apply_pending
+    apply_pending(request.device)  # голосовые отметки, ждавшие загрузки поездки
     qs = Question.objects.filter(device=request.device, status="open", event__trip=trip).count()
     return JsonResponse({"trip_id": trip.pk, "events": trip.events.count(), "questions": qs, "duplicate": bool(getattr(trip, "duplicate", False))},
                         status=200 if getattr(trip, "duplicate", False) else 201)
@@ -143,3 +146,42 @@ def ahead(request):
                             level=c.level, type=c.type, confidence=c.confidence, safe_speed=c.safe_speed_kmh))
     out.sort(key=lambda x: x["distance_m"])
     return JsonResponse({"ahead": out[:5]})
+
+
+MARK_KINDS = {"pothole", "deep", "bump", "manhole", "not_pothole"}
+
+
+@csrf_exempt
+@device_required
+@require_http_methods(["POST"])
+def marks_create(request):
+    """Голосовые/ручные отметки водителя пачкой: {"marks":[{client_id, kind, lat, lon, heading?, at}]}. Идемпотентно по client_id."""
+    from django.utils.dateparse import parse_datetime
+    from telemetry.marks import apply_mark
+    from telemetry.models import DriverMark
+    dev = request.device
+    if dev.trust < 0.3:
+        return JsonResponse({"error": "low trust"}, status=403)
+    items = body(request).get("marks")
+    if not isinstance(items, list) or not 0 < len(items) <= 50:
+        return JsonResponse({"error": "marks: 1..50"}, status=400)
+    left = 300 - DriverMark.objects.filter(device=dev, created__gte=timezone.now() - timedelta(days=1)).count()
+    made = 0
+    for it in items:
+        try:
+            cid, kind = str(it["client_id"])[:64], it["kind"]
+            lat, lon = float(it["lat"]), float(it["lon"])
+            at = parse_datetime(str(it["at"]))
+            hd = it.get("heading")
+            hd = float(hd) if hd is not None else None
+        except (KeyError, TypeError, ValueError):
+            return JsonResponse({"error": "bad mark"}, status=400)
+        if kind not in MARK_KINDS or at is None or not (36 <= lat <= 46 and 55 <= lon <= 80):
+            return JsonResponse({"error": "bad mark"}, status=400)
+        if made >= left:
+            return JsonResponse({"error": "too many marks today"}, status=429)
+        m, new = DriverMark.objects.get_or_create(device=dev, client_id=cid, defaults=dict(kind=kind, lat=lat, lon=lon, heading=hd, at=at))
+        if new:
+            made += 1
+            apply_mark(m)
+    return JsonResponse({"ok": True, "created": made}, status=201)

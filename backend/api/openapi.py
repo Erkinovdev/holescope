@@ -15,6 +15,7 @@ OPS = [
     ("/me/stats", "get", "devices", "Статистика профиля: найдено / подтверждено / км", "device", [], None),
     ("/trips", "post", "trips", "Результат поездки: события, сегменты ровности, подвеска (идемпотентно по client_id)", "device", [], "started_at, duration_s, distance_km, events[], segments[], client_id, mode"),
     ("/trips/raw", "post", "trips", "Сырой CSV (исследовательские устройства), multipart file", "device", [], "file"),
+    ("/marks", "post", "brain", "Голосовые/ручные отметки водителя (яма, люк, лежачий, не яма): привязка к событиям, разметка", "device", [], "marks[]: client_id, kind, lat, lon, heading, at"),
     ("/questions/next", "get", "brain", "До 5 вопросов «что это было?» после поездки", "device", [], None),
     ("/questions/{qid}/answer", "post", "brain", "Ответ водителя → разметка", "device", [P("qid", "id вопроса")], "answer"),
     ("/map/clusters", "get", "map", "Ямы в прямоугольнике", None, [Q("bbox", "min_lat,min_lon,max_lat,max_lon", True), Q("status", "через запятую", False)], None),
