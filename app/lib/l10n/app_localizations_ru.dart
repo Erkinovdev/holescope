@@ -707,4 +707,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setHoliWake => 'Отзываться на «Привет, Холи» (пока экран включён)';
+
+  @override
+  String get loaderSearching => 'Ищем ямы рядом…';
+
+  @override
+  String get loaderScanning => 'Сканируем дорогу…';
 }

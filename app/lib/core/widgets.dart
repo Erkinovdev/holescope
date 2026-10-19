@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:holescope/core/loaders.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/l10n/app_localizations.dart';
 
@@ -65,10 +66,13 @@ class HpCard extends StatelessWidget {
 enum HpButtonKind { primary, secondary, danger }
 
 class HpButton extends StatelessWidget {
-  const HpButton(this.label, {super.key, this.kind = HpButtonKind.primary, this.onPressed});
+  const HpButton(this.label, {super.key, this.kind = HpButtonKind.primary, this.onPressed, this.loading = false});
   final String label;
   final HpButtonKind kind;
   final VoidCallback? onPressed;
+
+  /// Идёт действие: вместо текста — мини-спиннер, нажатия игнорируются.
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -86,10 +90,14 @@ class HpButton extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: border == null ? BorderSide.none : BorderSide(color: border)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: onPressed,
+          onTap: loading ? null : onPressed,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Center(child: Text(label, style: HpText.s(fg, 16, FontWeight.w600))),
+            child: Center(
+              child: loading
+                  ? Row(mainAxisSize: MainAxisSize.min, spacing: 10, children: [MiniSpinner(size: 20, color: fg), Text(label, style: HpText.s(fg, 16, FontWeight.w600))])
+                  : Text(label, style: HpText.s(fg, 16, FontWeight.w600)),
+            ),
           ),
         ),
       ),

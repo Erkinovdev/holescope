@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:holescope/core/demo.dart';
+import 'package:holescope/core/loaders.dart';
 import 'package:holescope/core/settings.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/core/widgets.dart';
@@ -356,7 +357,7 @@ class _QuestionScreenState extends ConsumerState<QuestionScreen> {
         HpTitle(l.questionTitle),
         HpSub(l.questionSub),
         qs.when(
-          loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+          loading: () => DotsLabel(l.loaderSearching),
           error: (_, __) => HpSub(l.questionsEmpty),
           data: (list) {
             if (idx >= list.length) return HpSub(l.questionsEmpty);

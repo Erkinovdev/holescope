@@ -50,4 +50,8 @@ for it in json.load(open(f"{ios}/Contents.json"))["images"]:
     w = float(it["size"].split("x")[0]) * int(it["scale"][0])
     save(on_canvas(int(round(w)), 0.7, True), f"{ios}/{it['filename']}", opaque=True)
 save(on_canvas(1024, 0.7, True), "assets/icon_1024.png", opaque=True)
+# экран запуска: знак на прозрачном фоне (фон — цвет бренда задаётся в Android/iOS отдельно)
+save(on_canvas(288, 0.5, False), f"{res}/drawable/launch_mark.png")
+for suffix, px in (("", 168), ("@2x", 336), ("@3x", 504)):
+    save(on_canvas(px, 0.8, False), f"ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage{suffix}.png")
 print("ok")

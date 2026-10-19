@@ -8,6 +8,7 @@ import { api, type AlgoVersion, type Readiness, type GraphEdge, type GraphNode }
 import { useAuth } from '../lib/auth'
 import { fmtDate, fmtDateTime, fmtNum, ROUGH_COLORS, TYPE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
+import { Mark, ScanBar } from '../components/Loaders'
 
 type Tab = 'graph' | 'timeline' | 'queue' | 'uploads' | 'params'
 const TABS: { value: Tab; label: string }[] = [
@@ -56,7 +57,7 @@ function GraphTab() {
   return (
     <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
       <Card pad={false} className="relative h-[560px] overflow-hidden">
-        {g.isLoading && <Spinner />}
+        {g.isLoading && <div className="flex h-full flex-col items-center justify-center gap-4"><Mark size={110} /><ScanBar width={180} /></div>}
         {g.error && <div className="p-4"><ErrorBox error={g.error} onRetry={() => g.refetch()} /></div>}
         {g.data && nodes.length === 0 && <div className="p-6"><Empty>Данных для графа пока нет: ямы появятся после первых поездок.</Empty></div>}
         {nodes.length > 0 && <Brain3D nodes={nodes} edges={edges} onSelect={setSel} selectedId={sel?.id ?? null} />}

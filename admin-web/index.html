@@ -4,9 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0d12" />
     <title>Holescope · Админка</title>
   </head>
   <body>
+    <div id="hs-boot" role="status" aria-label="Загрузка">
+      <svg class="hs-mark" width="120" height="120" viewBox="0 0 64 64" aria-hidden="true">
+        <defs><linearGradient id="hs-ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffcf5a"/><stop offset="1" stop-color="#ff9f0a"/></linearGradient></defs>
+        <circle class="ring" cx="32" cy="32" r="22"/>
+        <line class="tick t1" x1="32" y1="4" x2="32" y2="15"/><line class="tick t2" x1="32" y1="60" x2="32" y2="49"/>
+        <line class="tick t3" x1="4" y1="32" x2="15" y2="32"/><line class="tick t4" x1="60" y1="32" x2="49" y2="32"/>
+        <ellipse class="hole" cx="32" cy="33" rx="10" ry="6"/>
+      </svg>
+      <div class="hs-scan" style="width:200px" aria-hidden="true"></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
-import { Spinner, ToastProvider } from './components/ui'
+import { PageLoader } from './components/Loaders'
+import { ToastProvider } from './components/ui'
 import { AuthProvider, useAuth } from './lib/auth'
 import Access from './pages/Access'
 import Complaints from './pages/Complaints'
@@ -22,10 +23,10 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 1
 
 function Gate() {
   const { me, loading, can } = useAuth()
-  if (loading) return <Spinner label="Проверяем вход…" />
+  if (loading) return <PageLoader label="Проверяем вход…" />
   if (!me) return <Login />
   return (
-    <Suspense fallback={<Spinner />}>
+    <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Overview />} />

@@ -679,4 +679,10 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get setHoliWake =>
       '«Salom, Xoli» ga javob berish (ekran yoniq bo‘lganda)';
+
+  @override
+  String get loaderSearching => 'Atrofdagi o‘ralarni qidiramiz…';
+
+  @override
+  String get loaderScanning => 'Yo‘lni skanerlaymiz…';
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/loaders.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
 import '../l10n/app_localizations.dart';
@@ -39,6 +40,7 @@ class HoliPanel extends ConsumerWidget {
               radius: 24,
               border: true,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+                if (ui.status == HoliStatus.listening) const Center(child: HoliWave(size: 96)),
                 Row(spacing: 10, children: [
                   HpDot(ui.status == HoliStatus.listening ? Tone.smooth : Tone.amber, size: 12),
                   Text(l.holiName, style: HpText.s(c.text, 18, FontWeight.w700)),

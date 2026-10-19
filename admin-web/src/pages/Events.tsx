@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ClusterPanel from '../components/ClusterPanel'
-import { Button, Card, Chip, ErrorBox, Field, Input, Modal, PageHeader, Pagination, Select, Spinner, Table, useToast } from '../components/ui'
+import { Button, Card, Chip, ErrorBox, Field, Input, Modal, PageHeader, Pagination, Select, Table, useToast } from '../components/ui'
 import { api, type Cluster, type Page } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { ago, LEVEL_NAMES, LEVEL_TONE, STATUS_NAMES, STATUS_TONE, TYPE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
+import { TableSkeleton } from '../components/Loaders'
 
 export default function Events() {
   const { can } = useAuth()
@@ -45,7 +46,7 @@ export default function Events() {
       </div>
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <div>
-          {list.isLoading && <Spinner />}
+          {list.isLoading && <TableSkeleton />}
           {list.error && <ErrorBox error={list.error} onRetry={() => list.refetch()} />}
           {list.data && (
             <>

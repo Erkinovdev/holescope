@@ -204,5 +204,7 @@
   "@holiHeard": {"placeholders": {"text": {"type": "String"}}},
   "holiHint": "Ayting: o‘ra, chuqur o‘ra, yotiq politsiyachi, lyuk yoki bekor",
   "setHoliAsk": "Zarbadan keyin Xoli «ha/yo‘q» deb so‘raydi",
-  "setHoliWake": "«Salom, Xoli» ga javob berish (ekran yoniq bo‘lganda)"
+  "setHoliWake": "«Salom, Xoli» ga javob berish (ekran yoniq bo‘lganda)",
+  "loaderSearching": "Atrofdagi o‘ralarni qidiramiz…",
+  "loaderScanning": "Yo‘lni skanerlaymiz…"
 }

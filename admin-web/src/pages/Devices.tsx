@@ -5,6 +5,7 @@ import { api, type CarModel, type Device, type Page, type Vehicle } from '../lib
 import { useAuth } from '../lib/auth'
 import { ago, fmtDateTime, fmtNum, MODE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
+import { TableSkeleton } from '../components/Loaders'
 
 const ROLES: Record<string, string> = { driver: 'водитель', passenger: 'пассажир / такси', research: 'исследовательский логгер' }
 const MOUNTS: Record<string, string> = { '': 'не указано', seat: 'на сиденье', cupholder: 'в подстаканнике', holder: 'в держателе' }
@@ -25,7 +26,7 @@ export default function Devices() {
         <Field label="Роль"><Select value={role} onChange={(e) => setRole(e.target.value)}><option value="">все</option>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
         <Field label="Блокировка"><Select value={blocked} onChange={(e) => setBlocked(e.target.value)}><option value="">все</option><option value="1">заблокированные</option><option value="0">активные</option></Select></Field>
       </div>
-      {list.isLoading && <Spinner />}
+      {list.isLoading && <TableSkeleton />}
       {list.error && <ErrorBox error={list.error} onRetry={() => list.refetch()} />}
       {list.data && (
         <>

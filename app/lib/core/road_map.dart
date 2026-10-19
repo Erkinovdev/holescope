@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:holescope/core/loaders.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/services/api_client.dart';
 import 'package:holescope/services/providers.dart';
@@ -151,7 +152,7 @@ class _RoadMapViewState extends ConsumerState<RoadMapView> {
           ),
         ),
         if (offline) Positioned(left: 16, bottom: 12, child: _Chip(text: 'нет связи с сервером', color: hp.craterText, bg: hp.surface)),
-        if (loading && !offline) const Positioned(right: 16, bottom: 12, child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+        if (loading && !offline) const Positioned(right: 16, bottom: 12, child: MiniSpinner(size: 20)),
       ]);
     });
   }

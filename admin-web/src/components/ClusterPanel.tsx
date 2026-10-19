@@ -5,7 +5,8 @@ import { useAuth } from '../lib/auth'
 import { ago, fmtDateTime, LEVEL_NAMES, LEVEL_TONE, STATUS_NAMES, STATUS_TONE, TYPE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
 import { Wave } from './Charts'
-import { Button, Chip, ErrorBox, Field, Input, KV, Select, Spinner } from './ui'
+import { CardSkeleton } from './Loaders'
+import { Button, Chip, ErrorBox, Field, Input, KV, Select } from './ui'
 
 const STATUSES = Object.keys(STATUS_NAMES)
 const TYPES = Object.keys(TYPE_NAMES)
@@ -17,7 +18,7 @@ export default function ClusterPanel({ id, onChanged, onMerge }: { id: number; o
   const q = useGet<ClusterDetail>(`/admin/clusters/${id}`)
   const [safe, setSafe] = useState<string | null>(null)
   const save = useSave((b: Record<string, unknown>) => api.patch<Cluster>(`/admin/clusters/${id}/patch`, b), { ok: 'Сохранено', invalidate: ['/admin/clusters', '/admin/overview', '/admin/brain'], onDone: (c) => onChanged?.(c) })
-  if (q.isLoading) return <Spinner />
+  if (q.isLoading) return <CardSkeleton rows={4} />
   if (q.error) return <ErrorBox error={q.error} onRetry={() => q.refetch()} />
   const c = q.data!
   const edit = can('labeler')

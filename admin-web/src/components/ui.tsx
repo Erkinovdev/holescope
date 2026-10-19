@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { Dots, MiniSpin } from './Loaders'
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 
 export type Tone = 'smooth' | 'warn' | 'crater' | 'info' | 'muted' | 'amber'
@@ -34,13 +35,18 @@ const btnCls: Record<BtnKind, string> = {
   danger: 'bg-crater text-white hover:brightness-110',
   ghost: 'text-muted hover:text-ink hover:bg-raised',
 }
-export function Button({ kind = 'secondary', small, className, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { kind?: BtnKind; small?: boolean }) {
+export function Button({ kind = 'secondary', small, loading, className, children, ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { kind?: BtnKind; small?: boolean; loading?: boolean }) {
   return (
     <button
       type="button"
       {...p}
+      disabled={p.disabled || loading}
+      aria-busy={loading || undefined}
       className={cx('inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-50', small ? 'px-3 py-1.5 text-xs' : 'px-4 py-2.5 text-sm', btnCls[kind], className)}
-    />
+    >
+      {loading && <MiniSpin size={small ? 14 : 18} className="" />}
+      {children}
+    </button>
   )
 }
 
@@ -71,8 +77,9 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
   )
 }
 
-export function Spinner({ label = 'Загрузка…' }: { label?: string }) {
-  return <div className="flex items-center gap-3 p-6 text-muted" role="status"><span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-amber" />{label}</div>
+/** Загрузка блока: точки-ямы и подпись. Для страницы целиком — PageLoader, для списков и карточек — TableSkeleton / CardSkeleton. */
+export function Spinner({ label = 'Ищем данные…' }: { label?: string }) {
+  return <div className="flex items-center gap-3 p-6 text-muted" role="status"><Dots />{label}</div>
 }
 
 export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => void }) {

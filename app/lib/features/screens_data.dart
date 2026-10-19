@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:holescope/core/road_map.dart';
+import 'package:holescope/core/loaders.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/core/widgets.dart';
 import 'package:holescope/features/screens_live.dart' show fmtDate, fmtKm;
@@ -35,7 +36,7 @@ class _Error extends StatelessWidget {
   }
 }
 
-Widget _loading() => const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()));
+Widget _loading() => const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: SkeletonList());
 
 // ───────────────────────── Живая карта ─────────────────────────
 class LiveMapScreen extends ConsumerStatefulWidget {

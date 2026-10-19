@@ -5,6 +5,7 @@ import { Button, Card, CardTitle, Chip, ErrorBox, Field, Input, KV, PageHeader, 
 import type { Page, TripRow } from '../lib/api'
 import { fmtDateTime, fmtNum, LEVEL_NAMES, LEVEL_TONE, MODE_NAMES, ROUGH_COLORS, TYPE_NAMES } from '../lib/format'
 import { useGet } from '../lib/hooks'
+import { TableSkeleton } from '../components/Loaders'
 
 export default function Trips() {
   const nav = useNavigate()
@@ -22,7 +23,7 @@ export default function Trips() {
         <Field label="С даты"><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
         <Field label="По дату"><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
       </div>
-      {list.isLoading && <Spinner />}
+      {list.isLoading && <TableSkeleton />}
       {list.error && <ErrorBox error={list.error} onRetry={() => list.refetch()} />}
       {list.data && (
         <>

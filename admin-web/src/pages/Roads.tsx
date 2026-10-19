@@ -4,6 +4,7 @@ import { api, type Page, type Road, type RoadSegmentRow } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { fmtNum, ROAD_CLASS_NAMES, ROUGH_COLORS, SURFACE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
+import { TableSkeleton } from '../components/Loaders'
 
 interface RoadDetail extends Omit<Road, 'segments'> { classes: Record<string, number>; segments_total: number; segments: RoadSegmentRow[]; osm_way_ids: number[]; clusters: number }
 
@@ -25,7 +26,7 @@ export default function Roads() {
         <Field label="Названия"><Select value={named} onChange={(e) => setNamed(e.target.value)}><option value="">все</option><option value="1">с названием</option><option value="0">без названия</option></Select></Field>
         <Field label="Проверка класса"><Select value={reviewed} onChange={(e) => setReviewed(e.target.value)}><option value="">все</option><option value="1">проверен</option><option value="0">не проверен</option></Select></Field>
       </div>
-      {list.isLoading && <Spinner />}
+      {list.isLoading && <TableSkeleton />}
       {list.error && <ErrorBox error={list.error} onRetry={() => list.refetch()} />}
       {list.data && (
         <>

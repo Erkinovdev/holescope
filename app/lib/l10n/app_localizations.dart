@@ -1321,6 +1321,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Отзываться на «Привет, Холи» (пока экран включён)'**
   String get setHoliWake;
+
+  /// No description provided for @loaderSearching.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ищем ямы рядом…'**
+  String get loaderSearching;
+
+  /// No description provided for @loaderScanning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сканируем дорогу…'**
+  String get loaderScanning;
 }
 
 class _AppLocalizationsDelegate
