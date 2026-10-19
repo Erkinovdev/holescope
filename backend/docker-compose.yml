@@ -55,6 +55,23 @@ services:
     ports:
       - "${ADMIN_PORT:-8020}:80"
 
+  # HTTPS (Let's Encrypt) перед админкой и API; включается только на сервере: COMPOSE_PROFILES=prod, DOMAIN=...
+  caddy:
+    image: caddy:2
+    profiles: ["prod"]
+    restart: unless-stopped
+    depends_on:
+      - admin
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
 volumes:
+  caddy_data:
   pgdata:
   media:
