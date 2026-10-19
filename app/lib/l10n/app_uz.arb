@@ -194,5 +194,15 @@
   "recentTrips": "So‘nggi safarlar",
   "tripsEmpty": "Hozircha safarlar yo‘q",
   "coverageKm": "{km} km yo‘l o‘tilgan",
-  "daysUnit": "kun"
+  "daysUnit": "kun",
+  "holiName": "Xoli",
+  "holiListening": "tinglayapti",
+  "holiSpeaking": "gapiryapti",
+  "holiThinking": "o‘ylayapti",
+  "holiCall": "Xolini chaqirish",
+  "holiHeard": "Siz aytdingiz: «{text}»",
+  "@holiHeard": {"placeholders": {"text": {"type": "String"}}},
+  "holiHint": "Ayting: o‘ra, chuqur o‘ra, yotiq politsiyachi, lyuk yoki bekor",
+  "setHoliAsk": "Zarbadan keyin Xoli «ha/yo‘q» deb so‘raydi",
+  "setHoliWake": "«Salom, Xoli» ga javob berish (ekran yoniq bo‘lganda)"
 }

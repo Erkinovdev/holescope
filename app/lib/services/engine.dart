@@ -5,11 +5,13 @@ import 'package:flutter/foundation.dart';
 
 import '../algo/trip_state.dart';
 import '../core/settings.dart';
+import '../voice/holi_controller.dart';
 import 'ahead_warner.dart';
 import 'announcer.dart';
 import 'api_client.dart';
 import 'device_auth.dart';
 import 'local_db.dart';
+import 'mark_service.dart';
 import 'outbox.dart';
 import 'samples.dart';
 import 'sensor_source.dart';
@@ -38,7 +40,10 @@ class RecorderEngine {
       onTripQueued: (t) {
         if (recoveryFile != null) recorder.clearPersisted(recoveryFile!);
         unawaited(flushOutbox());
+        onTripDone?.call(t);
       },
+      onCandidate: (at, lat, lon, hd, score) =>
+          onCandidate?.call(HoliCandidate(at: DateTime.fromMillisecondsSinceEpoch(at.round()), lat: lat, lon: lon, heading: hd, score: score)),
     );
     warner = AheadWarner(db, api, config: () => AheadConfig(warnDistanceM: settings().warnDistanceM));
     outbox = OutboxWorker(db, api);
@@ -53,6 +58,26 @@ class RecorderEngine {
   final String? rawDir;
   final File? recoveryFile; // буфер идущей поездки на диске
   final String platform;
+
+  /// Холи: свежий удар, похожий на яму (спросить «да/нет»), и завершение поездки (сказать «поездка записана»).
+  void Function(HoliCandidate)? onCandidate;
+  void Function(FinishedTrip)? onTripDone;
+
+  final _fixes = <MarkFix>[]; // последние координаты для голосовых отметок
+
+  /// Координата, ближайшая по времени к [t] (из последних ~2 минут GPS). null — GPS ещё не было.
+  MarkFix? fixAt(DateTime t) {
+    MarkFix? best;
+    var bestD = 1 << 62;
+    for (final f in _fixes) {
+      final d = (f.at.millisecondsSinceEpoch - t.millisecondsSinceEpoch).abs();
+      if (d < bestD) {
+        best = f;
+        bestD = d;
+      }
+    }
+    return best;
+  }
 
   late final TripRecorder recorder;
   late final AheadWarner warner;
@@ -111,6 +136,8 @@ class RecorderEngine {
   }
 
   void _onGps(GpsFix f) {
+    _fixes.add(MarkFix(DateTime.fromMillisecondsSinceEpoch(f.tMs), f.lat, f.lon, f.headingDeg.isNaN ? null : f.headingDeg));
+    if (_fixes.length > 130) _fixes.removeRange(0, _fixes.length - 120);
     final before = recorder.phase;
     recorder.onGps(f);
     if (recorder.phase == RecorderPhase.idle && before != RecorderPhase.idle) warner.reset();

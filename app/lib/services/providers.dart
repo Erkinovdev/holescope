@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
@@ -6,6 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/settings.dart';
 import '../l10n/app_localizations.dart';
+import '../voice/holi_controller.dart';
+import '../voice/holi_phrase.dart';
+import '../voice/holi_voice.dart';
+import '../voice/speech_engine.dart';
 import 'ahead_warner.dart';
 import 'announcer.dart';
 import 'api_client.dart';
@@ -13,6 +18,7 @@ import 'config.dart';
 import 'device_auth.dart';
 import 'engine.dart';
 import 'local_db.dart';
+import 'mark_service.dart';
 import 'permissions.dart';
 import 'sensor_source.dart';
 import 'trip_recorder.dart';
@@ -31,7 +37,7 @@ final engineProvider = Provider<RecorderEngine>((ref) {
       return ForegroundTexts(title: l.appName, recording: l.notifRecording, waiting: l.notifWaiting);
     }),
     api: ref.watch(apiProvider),
-    announcer: TtsAnnouncer(),
+    announcer: HoliAnnouncer(ref.watch(holiVoiceProvider)),
     auth: DeviceAuth(SecureTokenStore()),
     settings: () => ref.read(settingsProvider),
     rawDir: ref.watch(supportDirProvider) == null ? null : '${ref.watch(supportDirProvider)}/raw',
@@ -41,6 +47,44 @@ final engineProvider = Provider<RecorderEngine>((ref) {
   ref.onDispose(e.dispose);
   return e;
 });
+/// Язык голоса: настройки приложения (ru/uz), иначе язык системы.
+String _voiceLang(Ref ref) {
+  final code = ref.read(settingsProvider).locale?.languageCode ?? PlatformDispatcher.instance.locale.languageCode;
+  return code == 'uz' ? 'uz' : 'ru';
+}
+
+/// Озвучка Холи (файлы mp3, запасной вариант — системный голос).
+final holiVoiceProvider = Provider<Future<HoliVoice>>((ref) => HoliVoice.load(lang: () => _voiceLang(ref)));
+
+/// Диалог Холи: команды, вопрос «да/нет» после удара, отметки. Подключается к движку записи.
+final holiControllerProvider = FutureProvider<HoliController>((ref) async {
+  final voice = await ref.watch(holiVoiceProvider);
+  final eng = ref.read(engineProvider);
+  final marks = MarkService(db: eng.db, api: eng.api, auth: eng.auth, platform: eng.platform);
+  final ctrl = HoliController(voice: voice, speech: DeviceSpeechEngine(), marks: marks, fixAt: eng.fixAt, lang: () => _voiceLang(ref));
+  eng.onCandidate = (c) {
+    final s = ref.read(settingsProvider);
+    if (s.holiAsk && s.voice) unawaited(ctrl.askConfirm(c));
+  };
+  eng.onTripDone = (t) {
+    ctrl.resetTrip();
+    if (ref.read(settingsProvider).voice) unawaited(voice.play(HoliPhrase.tripDone));
+    unawaited(marks.flush());
+  };
+  final flush = Timer.periodic(const Duration(minutes: 3), (_) => unawaited(marks.flush()));
+  unawaited(marks.flush());
+  ref.listen(settingsProvider.select((s) => s.holiWake), (_, on) => on ? unawaited(ctrl.startWakeLoop()) : unawaited(ctrl.stopWakeLoop()));
+  if (ref.read(settingsProvider).holiWake) unawaited(ctrl.startWakeLoop());
+  ref.onDispose(() {
+    flush.cancel();
+    eng.onCandidate = null;
+    eng.onTripDone = null;
+    marks.dispose();
+    ctrl.dispose();
+  });
+  return ctrl;
+});
+
 final permissionServiceProvider = Provider<PermissionService>((ref) => DevicePermissionService());
 
 final apiProvider = Provider<ApiClient>((ref) => ApiClient(AppConfig.resolveApiBase()));

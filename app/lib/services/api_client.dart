@@ -190,6 +190,8 @@ class ApiClient {
         (d) => (token: d['token'] as String, nickname: d['nickname'] as String),
       );
 
+  Future<void> sendMarks(List<Map<String, dynamic>> marks) => _run(() => _dio.post('/api/v1/marks', data: {'marks': marks}, options: _auth), (_) {});
+
   Future<Map<String, dynamic>> algoParams() => _run(() => _dio.get('/api/v1/algo/params'), (d) => Map<String, dynamic>.from(d as Map));
 
   Future<void> patchVehicle(Map<String, dynamic> body) => _run(() => _dio.patch('/api/v1/me/vehicle', data: body, options: _auth), (_) {});

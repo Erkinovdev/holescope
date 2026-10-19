@@ -648,4 +648,35 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get daysUnit => 'kun';
+
+  @override
+  String get holiName => 'Xoli';
+
+  @override
+  String get holiListening => 'tinglayapti';
+
+  @override
+  String get holiSpeaking => 'gapiryapti';
+
+  @override
+  String get holiThinking => 'o‘ylayapti';
+
+  @override
+  String get holiCall => 'Xolini chaqirish';
+
+  @override
+  String holiHeard(String text) {
+    return 'Siz aytdingiz: «$text»';
+  }
+
+  @override
+  String get holiHint =>
+      'Ayting: o‘ra, chuqur o‘ra, yotiq politsiyachi, lyuk yoki bekor';
+
+  @override
+  String get setHoliAsk => 'Zarbadan keyin Xoli «ha/yo‘q» deb so‘raydi';
+
+  @override
+  String get setHoliWake =>
+      '«Salom, Xoli» ga javob berish (ekran yoniq bo‘lganda)';
 }

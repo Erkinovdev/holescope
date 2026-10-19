@@ -15,6 +15,7 @@ import 'package:holescope/services/data_providers.dart';
 import 'package:holescope/services/permissions.dart';
 import 'package:holescope/services/providers.dart';
 import 'package:holescope/services/trip_recorder.dart';
+import 'package:holescope/voice/holi_widgets.dart';
 
 // Экраны, работающие с реальным состоянием приложения (датчики, очередь, сервер).
 
@@ -119,6 +120,7 @@ class DriveScreen extends ConsumerWidget {
     final queue = ref.watch(queueSizeProvider);
     return HpFill(bottom: [
       if (queue > 0) Text(l.syncQueue(queue), textAlign: TextAlign.center, style: HpText.s(c.muted, 13, FontWeight.w400)),
+      const HoliCallButton(),
       if (driving) HpButton(l.skipTrip, kind: HpButtonKind.secondary, onPressed: eng.skipTrip),
       HpButton(
         driving ? l.driveStop : l.driveStart,
@@ -160,6 +162,7 @@ class DriveScreen extends ConsumerWidget {
           ]),
         ]),
       ),
+      const HoliPanel(),
     ]);
   }
 }
@@ -483,6 +486,8 @@ class SettingsScreen extends ConsumerWidget {
         HpTitle(l.settingsTitle),
         HpToggleRow(label: l.autoRecord, value: s.autoRecord, onChanged: (v) => n.update((x) => x.copyWith(autoRecord: v))),
         HpToggleRow(label: l.setVoice, value: s.voice, onChanged: (v) => n.update((x) => x.copyWith(voice: v))),
+        HpToggleRow(label: l.setHoliAsk, value: s.holiAsk, onChanged: (v) => n.update((x) => x.copyWith(holiAsk: v))),
+        HpToggleRow(label: l.setHoliWake, value: s.holiWake, onChanged: (v) => n.update((x) => x.copyWith(holiWake: v))),
         HpToggleRow(label: l.setBeep, value: s.beep, onChanged: (v) => n.update((x) => x.copyWith(beep: v))),
         HpNavRow(
           label: l.setWarnDistance(s.warnDistanceM),

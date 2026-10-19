@@ -4,7 +4,7 @@
 set -euo pipefail
 HOST="${1:?укажите user@host}"
 ssh "$HOST" 'command -v docker >/dev/null || (curl -fsSL https://get.docker.com | sh); mkdir -p /opt/holescope'
-tar --exclude=node_modules --exclude=.venv --exclude=.git --exclude=app --exclude=__pycache__ --exclude=releases --exclude=admin-web/dist --exclude=backend/data/uzbekistan.osm.pbf -czf - . | ssh "$HOST" 'tar -xzf - -C /opt/holescope'
+tar --exclude=node_modules --exclude=.venv --exclude=.git --exclude=backend/.env --exclude=app --exclude=__pycache__ --exclude=releases --exclude=admin-web/dist --exclude=backend/data/uzbekistan.osm.pbf -czf - . | ssh "$HOST" 'tar -xzf - -C /opt/holescope'
 ssh "$HOST" 'cd /opt/holescope/backend && [ -f .env ] || cat > .env <<ENV
 DJANGO_DEBUG=0
 DJANGO_SECRET_KEY=$(openssl rand -hex 32)

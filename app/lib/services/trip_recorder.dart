@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
 
+import '../algo/detector.dart';
 import '../algo/frame.dart';
 import '../algo/params.dart';
 import '../algo/pipeline.dart';
@@ -81,6 +82,7 @@ class TripRecorder {
     RecorderContext Function()? context,
     this.onSnapshot,
     this.onTripQueued,
+    this.onCandidate,
   }) : _ctx = context ?? (() => const RecorderContext());
 
   final LocalDb db;
@@ -89,6 +91,10 @@ class TripRecorder {
   final RecorderContext Function() _ctx;
   final void Function(RecorderSnapshot)? onSnapshot;
   final void Function(FinishedTrip)? onTripQueued;
+
+  /// Свежий удар, похожий на яму: по нему Холи может спросить «да/нет». Событие уже в прошлом на секунды.
+  final void Function(double epochMs, double lat, double lon, double? heading, double score)? onCandidate;
+  double _lastCandidateMs = 0;
 
   final TripDetector _det = TripDetector();
   TripBuffer _buf = TripBuffer();
@@ -390,7 +396,25 @@ class TripRecorder {
     job().then((r) {
       _found = r.events.where((e) => e.type == 'pothole').length;
       _emit();
+      _offerCandidate(r, from, nowMs);
     }).catchError((_) {}).whenComplete(() => _liveBusy = false);
+  }
+
+  /// Самое сильное свежее событие (не старше 25 с, не слабое, не на малой скорости, не уже предложенное) → onCandidate.
+  void _offerCandidate(TripResult r, double fromMs, double nowMs) {
+    final cb = onCandidate;
+    if (cb == null) return;
+    RoadEventData? best;
+    for (final e in r.events) {
+      if (e.type != 'pothole' || e.lowConf || e.score < 5 || e.speedKmh < 15) continue;
+      final at = fromMs + e.t * 1000;
+      if (nowMs - at > 25000 || at <= _lastCandidateMs + 5000) continue;
+      if (best == null || e.score > best.score) best = e;
+    }
+    if (best == null) return;
+    final at = fromMs + best.t * 1000;
+    _lastCandidateMs = at;
+    cb(at, best.lat, best.lon, best.heading.isNaN ? null : best.heading, best.score);
   }
 
   String _encode(Map<String, dynamic> m) => jsonEncode(sanitizeJson(m));

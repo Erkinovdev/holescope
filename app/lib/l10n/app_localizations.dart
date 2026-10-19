@@ -1267,6 +1267,60 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'дн.'**
   String get daysUnit;
+
+  /// No description provided for @holiName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Холи'**
+  String get holiName;
+
+  /// No description provided for @holiListening.
+  ///
+  /// In ru, this message translates to:
+  /// **'слушает'**
+  String get holiListening;
+
+  /// No description provided for @holiSpeaking.
+  ///
+  /// In ru, this message translates to:
+  /// **'говорит'**
+  String get holiSpeaking;
+
+  /// No description provided for @holiThinking.
+  ///
+  /// In ru, this message translates to:
+  /// **'думает'**
+  String get holiThinking;
+
+  /// No description provided for @holiCall.
+  ///
+  /// In ru, this message translates to:
+  /// **'Позвать Холи'**
+  String get holiCall;
+
+  /// No description provided for @holiHeard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вы сказали: «{text}»'**
+  String holiHeard(String text);
+
+  /// No description provided for @holiHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скажите: яма, глубокая яма, лежачий, люк или отмена'**
+  String get holiHint;
+
+  /// No description provided for @setHoliAsk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Холи спрашивает «да/нет» после удара'**
+  String get setHoliAsk;
+
+  /// No description provided for @setHoliWake.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отзываться на «Привет, Холи» (пока экран включён)'**
+  String get setHoliWake;
 }
 
 class _AppLocalizationsDelegate

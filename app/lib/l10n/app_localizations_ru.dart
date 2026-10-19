@@ -678,4 +678,33 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get daysUnit => 'дн.';
+
+  @override
+  String get holiName => 'Холи';
+
+  @override
+  String get holiListening => 'слушает';
+
+  @override
+  String get holiSpeaking => 'говорит';
+
+  @override
+  String get holiThinking => 'думает';
+
+  @override
+  String get holiCall => 'Позвать Холи';
+
+  @override
+  String holiHeard(String text) {
+    return 'Вы сказали: «$text»';
+  }
+
+  @override
+  String get holiHint => 'Скажите: яма, глубокая яма, лежачий, люк или отмена';
+
+  @override
+  String get setHoliAsk => 'Холи спрашивает «да/нет» после удара';
+
+  @override
+  String get setHoliWake => 'Отзываться на «Привет, Холи» (пока экран включён)';
 }

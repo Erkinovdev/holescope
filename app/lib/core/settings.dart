@@ -27,6 +27,8 @@ class AppSettings {
     this.wheelbaseMm,
     this.tires,
     this.pressureBar,
+    this.holiAsk = true,
+    this.holiWake = false,
   });
 
   final ThemeMode themeMode;
@@ -40,6 +42,8 @@ class AppSettings {
   final int? wheelbaseMm;
   final String? tires;
   final double? pressureBar;
+  final bool holiAsk; // Холи спрашивает «да/нет» после ударов, похожих на яму
+  final bool holiWake; // слушать «Привет, Холи» (только пока экран включён)
 
   AppSettings copyWith({
     ThemeMode? themeMode,
@@ -57,6 +61,8 @@ class AppSettings {
     Object? wheelbaseMm = _keep,
     Object? tires = _keep,
     Object? pressureBar = _keep,
+    bool? holiAsk,
+    bool? holiWake,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -74,6 +80,8 @@ class AppSettings {
         wheelbaseMm: identical(wheelbaseMm, _keep) ? this.wheelbaseMm : wheelbaseMm as int?,
         tires: identical(tires, _keep) ? this.tires : tires as String?,
         pressureBar: identical(pressureBar, _keep) ? this.pressureBar : pressureBar as double?,
+        holiAsk: holiAsk ?? this.holiAsk,
+        holiWake: holiWake ?? this.holiWake,
       );
 }
 
@@ -104,6 +112,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
       wheelbaseMm: _p.getInt('wheelbaseMm'),
       tires: _p.getString('tires'),
       pressureBar: _p.getDouble('pressureBar'),
+      holiAsk: _p.getBool('holiAsk') ?? true,
+      holiWake: _p.getBool('holiWake') ?? false,
     );
   }
 
@@ -121,6 +131,8 @@ class SettingsNotifier extends Notifier<AppSettings> {
     _p.setBool('reduceMotion', s.reduceMotion);
     _p.setBool('onboarded', s.onboarded);
     _p.setBool('autoRecord', s.autoRecord);
+    _p.setBool('holiAsk', s.holiAsk);
+    _p.setBool('holiWake', s.holiWake);
     _setOrRemove('carName', s.carName);
     _setOrRemove('tires', s.tires);
     s.wheelbaseMm == null ? _p.remove('wheelbaseMm') : _p.setInt('wheelbaseMm', s.wheelbaseMm!);

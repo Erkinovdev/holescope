@@ -218,5 +218,15 @@
   "tripsEmpty": "Поездок пока нет",
   "coverageKm": "{km} км проездов",
   "@coverageKm": {"placeholders": {"km": {"type": "String"}}},
-  "daysUnit": "дн."
+  "daysUnit": "дн.",
+  "holiName": "Холи",
+  "holiListening": "слушает",
+  "holiSpeaking": "говорит",
+  "holiThinking": "думает",
+  "holiCall": "Позвать Холи",
+  "holiHeard": "Вы сказали: «{text}»",
+  "@holiHeard": {"placeholders": {"text": {"type": "String"}}},
+  "holiHint": "Скажите: яма, глубокая яма, лежачий, люк или отмена",
+  "setHoliAsk": "Холи спрашивает «да/нет» после удара",
+  "setHoliWake": "Отзываться на «Привет, Холи» (пока экран включён)"
 }

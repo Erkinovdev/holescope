@@ -54,6 +54,9 @@ dependencies:
   connectivity_plus: ^6.1.5
   uuid: ^4.6.0
   sqlite3: ^2.9.4
+  just_audio: ^0.10.6
+  audio_session: ^0.2.4
+  speech_to_text: ^7.4.0
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +78,8 @@ flutter:
   generate: true
   assets:
     - assets/figma/
+    - assets/holi/
+    - assets/holi/audio/
   fonts:
     - family: Inter
       fonts:

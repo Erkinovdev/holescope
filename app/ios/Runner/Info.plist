@@ -56,7 +56,12 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+		<string>audio</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Микрофон нужен, чтобы Холи слышала ваши команды: «яма», «люк», «да», «нет». Звук не записывается и не сохраняется.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Распознавание речи нужно, чтобы понимать короткие команды водителя. Записи не сохраняются.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
