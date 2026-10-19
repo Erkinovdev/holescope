@@ -1,0 +1,54 @@
+workflows:
+  android-apk:
+    name: Android APK
+    instance_type: linux_x2
+    max_build_duration: 40
+    working_directory: app
+    environment:
+      flutter: stable
+      java: 17
+      vars:
+        API_BASE: ""   # адрес сервера, например https://api.example.uz
+    scripts:
+      - name: Зависимости
+        script: flutter pub get
+      - name: Сборка APK
+        script: flutter build apk --release --dart-define=API_BASE=$API_BASE
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+    publishing:
+      email:
+        recipients:
+          - abdukkhak1mov@gmail.com
+
+  ios-ipa:
+    name: iOS IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    working_directory: app
+    integrations:
+      app_store_connect: HOLESCOPE_ASC   # имя ключа App Store Connect в Codemagic
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: uz.holescope.holescope
+      vars:
+        API_BASE: ""
+    scripts:
+      - name: Зависимости
+        script: flutter pub get
+      - name: Pods
+        script: find . -name Podfile -execdir pod install \;
+      - name: Подпись
+        script: xcode-project use-profiles
+      - name: Номер сборки
+        script: |
+          BUILD=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          echo "build=$((BUILD+1))"
+      - name: Сборка IPA
+        script: flutter build ipa --release --dart-define=API_BASE=$API_BASE --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
