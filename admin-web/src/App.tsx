@@ -14,6 +14,7 @@ import Login from './pages/Login'
 import Overview from './pages/Overview'
 import Roads from './pages/Roads'
 import Trips, { TripPage } from './pages/Trips'
+import Challenges from './pages/Challenges'
 import Districts from './pages/Districts'
 import Learning from './pages/Learning'
 import Reports from './pages/Reports'
@@ -54,6 +55,7 @@ function Gate() {
           <Route path="algo" element={<Algo />} />
           <Route path="districts" element={<Districts />} />
           <Route path="cars" element={<Cars />} />
+          <Route path="challenges" element={<Challenges />} />
           <Route path="reports" element={<Reports />} />
           <Route path="system" element={<System />} />
           <Route path="access" element={can('admin') ? <Access /> : <Navigate to="/" replace />} />

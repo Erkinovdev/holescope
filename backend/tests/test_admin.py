@@ -340,3 +340,16 @@ def test_system_and_badges(staff):
     assert set(b) >= {"events", "complaints", "questions", "algo"}
     s = c.get(f"{A}/system", headers=tok["analyst"]).json()
     assert s["services"][0]["state"] == "ok" and "counts" in s and isinstance(s["log"], list)
+
+
+def test_challenges(staff, data):
+    c, tok = staff
+    body_ = {"title": "Проехать 5 км", "kind": "km", "target": 5}
+    assert c.post(f"{A}/challenges/create", json.dumps(body_), content_type=J, headers=tok["analyst"]).status_code == 403
+    r = c.post(f"{A}/challenges/create", json.dumps(body_), content_type=J, headers=tok["admin"])
+    assert r.status_code == 201 and r.json()["target"] == 5
+    assert c.post(f"{A}/challenges/create", json.dumps({"title": "x", "kind": "zzz", "target": 1}), content_type=J, headers=tok["admin"]).status_code == 400
+    lst = c.get(f"{A}/challenges", headers=tok["analyst"]).json()
+    assert lst["summary"]["active"] == 1 and lst["items"][0]["done"] >= 0
+    cid = r.json()["id"]
+    assert c.post(f"{A}/challenges/{cid}/patch", json.dumps({"archived": True}), content_type=J, headers=tok["admin"]).json()["archived"] is True

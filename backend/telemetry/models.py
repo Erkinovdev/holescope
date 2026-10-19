@@ -179,3 +179,20 @@ class VoiceUsage(models.Model):
 
     class Meta:
         unique_together = [("device", "day")]
+
+
+class Challenge(models.Model):
+    """Цель для водителей на период: проехать N км, подтвердить N ям, дать N ответов. Прогресс считается по реальным данным."""
+    KINDS = [("km", "километры"), ("trips", "поездки"), ("confirmed", "подтверждённые ямы"), ("marks", "ответы водителей")]
+    title = models.CharField(max_length=120)
+    kind = models.CharField(max_length=12, choices=KINDS)
+    target = models.PositiveIntegerField()
+    district = models.ForeignKey("roadnet.District", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    starts = models.DateField()
+    ends = models.DateField(null=True, blank=True)
+    reward = models.CharField(max_length=120, blank=True)
+    archived = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["archived", "-created"]

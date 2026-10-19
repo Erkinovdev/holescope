@@ -33,6 +33,7 @@ export const GROUPS: NavGroup[] = [
   ] },
   { title: 'ПУБЛИКАЦИИ', items: [
     { to: '/reports', label: 'Отчёты', min: 'analyst', icon: 'doc' },
+    { to: '/challenges', label: 'Челленджи', min: 'analyst', icon: 'trophy' },
   ] },
   { title: 'СИСТЕМА', items: [
     { to: '/access', label: 'Доступы', min: 'admin', icon: 'key' },

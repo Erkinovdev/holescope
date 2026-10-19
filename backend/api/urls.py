@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, public, openapi, voice, admin_api as aa, admin_brain as ab, admin_calib as ac, admin_evolution as ae, admin_system as asys
+from . import views, public, openapi, voice, admin_api as aa, admin_brain as ab, admin_calib as ac, admin_evolution as ae, admin_system as asys, admin_challenges as ach
 
 urlpatterns = [
     path("devices/register", views.register),
@@ -61,6 +61,9 @@ urlpatterns = [
     path("admin/brain/evolution", ae.evolution),
     path("admin/badges", asys.badges),
     path("admin/system", asys.system),
+    path("admin/challenges", ach.challenges_list),
+    path("admin/challenges/create", ach.challenge_create),
+    path("admin/challenges/<int:cid>/patch", ach.challenge_patch),
     path("admin/brain/calibration", ac.calibration),
     path("admin/brain/calibration/apply", ac.calibration_apply),
     path("admin/brain/timeline", ab.timeline),
