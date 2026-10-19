@@ -9,14 +9,10 @@ import { useAuth } from '../lib/auth'
 import { fmtDate, fmtDateTime, fmtNum, ROUGH_COLORS, TYPE_NAMES } from '../lib/format'
 import { useGet, useSave } from '../lib/hooks'
 import { Mark, ScanBar } from '../components/Loaders'
-import CalibrationTab from './Calibration'
 import type { Taxonomy } from '../lib/api'
 
-type Tab = 'graph' | 'timeline' | 'queue' | 'calib' | 'uploads' | 'params'
-const TABS: { value: Tab; label: string }[] = [
-  { value: 'graph', label: '3D-граф' }, { value: 'timeline', label: 'Версии и метрики' }, { value: 'queue', label: 'Очередь разметки' }, { value: 'calib', label: 'Калибровка' },
-  { value: 'uploads', label: 'Записи CSV' }, { value: 'params', label: 'Параметры' },
-]
+type Tab = 'graph' | 'timeline'
+const TABS: { value: Tab; label: string }[] = [{ value: 'graph', label: '3D-граф' }, { value: 'timeline', label: 'Версии и метрики' }]
 
 interface Summary { current: Record<string, number | string>; history: unknown[] }
 
@@ -40,10 +36,6 @@ export default function Brain() {
       <div className="mb-4"><Segmented label="Раздел" value={tab} onChange={setTab} options={TABS} /></div>
       {tab === 'graph' && <GraphTab />}
       {tab === 'timeline' && <TimelineTab />}
-      {tab === 'queue' && <QueueTab />}
-      {tab === 'calib' && <CalibrationTab />}
-      {tab === 'uploads' && <UploadsTab />}
-      {tab === 'params' && <ParamsTab />}
     </div>
   )
 }
@@ -93,7 +85,7 @@ function GraphTab() {
 // ───────────────────────── версии и метрики ─────────────────────────
 interface Timeline { runs: { id: number; at: string; n_labels: number; metrics: Record<string, any>; log: string; version: string | null }[]; snapshots: { day: string; events: number; clusters: number; labels: number; km: number; devices: number }[]; versions: AlgoVersion[]; base: { version: string; f1: number | null } }
 
-function TimelineTab() {
+export function TimelineTab() {
   const { can } = useAuth()
   const t = useGet<Timeline>('/admin/brain/timeline')
   const toast = useToast()
@@ -151,7 +143,7 @@ function TimelineTab() {
 
 // ───────────────────────── очередь разметки ─────────────────────────
 interface QueueResp { stats: { open: number; answered: number; skipped: number; answered_7d: number; labels: number; by_source: Record<string, number> }; queue: { id: number; priority: number; at: string; speed_kmh: number; peak: number; score: number; type: string; level: string; confidence: number; wave: number[]; cluster: number | null }[]; labels: string[]; taxonomy: Taxonomy }
-function QueueTab() {
+export function QueueTab() {
   const { can } = useAuth()
   const q = useGet<QueueResp>('/admin/brain/questions', { limit: 24 })
   const label = useSave((b: { event_id: number; label: string }) => api.post('/admin/brain/label', b), { ok: 'Метка сохранена', invalidate: ['/admin/brain'] })
@@ -193,7 +185,7 @@ function QueueTab() {
 interface UploadRow { id: number; filename: string; created: string; processed: boolean; algo_version: string; report: { events?: number; by_type?: Record<string, number>; segments?: number; distance_km?: number; duration_s?: number; wheelbase_m?: number; error?: string } }
 interface ReviewResp { duration_s: number; samples: number; signal: { t: number[]; vz: number[] }; events: { t: number; type: string; level: string | null; score: number; peak: number; speed_kmh: number; lat: number; lon: number }[]; hands: number[][]; path: number[][]; fwd_ok: boolean }
 
-function UploadsTab() {
+export function UploadsTab() {
   const { can } = useAuth()
   const list = useGet<{ items: UploadRow[]; total: number }>('/admin/brain/uploads', { size: 30 })
   const [sel, setSel] = useState<number | null>(null)
@@ -258,7 +250,7 @@ interface ParamsResp { version: string; params: Record<string, number | number[]
 interface PreviewResp { current: { total: number; by_type: Record<string, number>; by_level: Record<string, number> }; preview: { total: number; by_type: Record<string, number>; by_level: Record<string, number> }; added: number; removed: number }
 const PARAM_NAMES: Record<string, string> = { floor: 'Минимальный порог, м/с²', k_noise: 'Множитель фонового шума', speed_alpha: 'Показатель скорости α', merge_gap_s: 'Склейка событий, с', wheelbase_m: 'Колёсная база, м (по умолчанию)', min_speed_ms: 'Мин. скорость поиска, м/с', low_conf_speed_ms: 'Порог «слабая достоверность», м/с', v0_ms: 'Опорная скорость v0, м/с', seg_len_m: 'Длина сегмента ровности, м', ri_beta: 'Показатель β индекса ровности', min_speed_ri_ms: 'Мин. скорость для ровности, м/с', grav_alpha: 'Сглаживание гравитации', smooth_samples: 'Сглаживание вертикали, отсчётов' }
 
-function ParamsTab() {
+export function ParamsTab() {
   const { can } = useAuth()
   const p = useGet<ParamsResp>('/admin/brain/params')
   const uploads = useGet<{ items: UploadRow[] }>('/admin/brain/uploads', { size: 30 })
@@ -325,7 +317,7 @@ function ParamsTab() {
 }
 
 // ───────────────────────── «Простыми словами» ─────────────────────────
-function ReadinessCard() {
+export function ReadinessCard() {
   const r = useGet<Readiness>('/admin/brain/readiness')
   if (!r.data) return null
   const d = r.data

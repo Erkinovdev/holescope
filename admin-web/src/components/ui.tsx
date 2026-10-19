@@ -1,4 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { Sparkline } from './Charts'
+import { Icon, type IconName } from './icons'
 import { Dots, MiniSpin } from './Loaders'
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 
@@ -7,7 +9,7 @@ const dot: Record<Tone, string> = { smooth: 'bg-smooth', warn: 'bg-warn', crater
 const cx = (...a: (string | false | undefined | null)[]) => a.filter(Boolean).join(' ')
 
 export function Card({ children, className, pad = true }: { children: ReactNode; className?: string; pad?: boolean }) {
-  return <section className={cx('rounded-[20px] border border-line bg-surface', pad && 'p-5', className)}>{children}</section>
+  return <section className={cx('rounded-[24px] border border-line bg-surface', pad && 'p-5', className)}>{children}</section>
 }
 
 export function CardTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
@@ -185,25 +187,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function Kpi({ label, value, sub, tone = 'amber' }: { label: string; value: ReactNode; sub?: string; tone?: Tone }) {
-  const col: Record<Tone, string> = { amber: 'text-amber-text', smooth: 'text-smooth', warn: 'text-warn', crater: 'text-crater', info: 'text-info', muted: 'text-ink' }
+const TONE_COL: Record<Tone, string> = { amber: 'var(--amber)', smooth: 'var(--smooth)', warn: 'var(--warn)', crater: 'var(--crater)', info: 'var(--info)', muted: 'var(--muted)' }
+export function Kpi({ label, value, sub, tone = 'amber', icon, trend, delta }: { label: string; value: ReactNode; sub?: string; tone?: Tone; icon?: IconName; trend?: number[]; delta?: number | null }) {
   return (
-    <Card className="flex-1 min-w-[200px]">
-      <div className="text-[13px] font-medium text-muted">{label}</div>
-      <div className={cx('mt-1 text-4xl font-bold tracking-tight', col[tone])}>{value}</div>
-      {sub && <div className="mt-1 text-xs text-muted">{sub}</div>}
+    <Card className="flex min-w-[200px] flex-1 flex-col">
+      <div className="flex items-start gap-2">
+        <div className="text-[13px] font-medium text-muted">{label}</div>
+        {icon && <span className="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-raised" style={{ color: TONE_COL[tone] }}><Icon name={icon} size={17} /></span>}
+      </div>
+      <div className="mt-1 text-4xl font-bold tracking-tight">{value}</div>
+      {(sub || delta != null) && (
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-muted">
+          {delta != null && <span className={cx('rounded-full px-2 py-0.5 font-semibold', delta >= 0 ? 'bg-smooth/15 text-smooth' : 'bg-crater/15 text-crater')}>{delta >= 0 ? '▲' : '▼'} {delta > 0 ? '+' : ''}{delta}%</span>}
+          {sub}
+        </div>
+      )}
+      {trend && <div className="mt-auto pt-3"><Sparkline data={trend} color={TONE_COL[tone]} /></div>}
     </Card>
   )
 }
 
+/** Верхняя правая «шапка» (версия алгоритма, город, пользователь) задаётся каркасом и показывается рядом с заголовком каждой страницы. */
+export const ChromeCtx = createContext<ReactNode>(null)
+
 export function PageHeader({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
+  const chrome = useContext(ChromeCtx)
   return (
     <div className="mb-5 flex flex-wrap items-center gap-3">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
         {sub && <p className="mt-1 text-sm text-muted">{sub}</p>}
       </div>
-      <div className="ml-auto flex items-center gap-2">{right}</div>
+      <div className="ml-auto flex flex-wrap items-center gap-2">{right}{chrome}</div>
     </div>
   )
 }

@@ -17,7 +17,6 @@ export default function DictionariesPage() {
       <PageHeader title="Справочники" sub="Все термины и коды системы. Значения закреплены в коде и едины для приложения, сервера и админки." />
       {d.isLoading && <Spinner />}
       {d.error && <ErrorBox error={d.error} onRetry={() => d.refetch()} />}
-      <CarModels />
       {d.data && (
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Object.entries(d.data).map(([k, v]) => (
@@ -32,7 +31,7 @@ export default function DictionariesPage() {
   )
 }
 
-function CarModels() {
+export function CarModels() {
   const { can } = useAuth()
   const q = useGet<{ items: CarModel[] }>('/admin/car-models')
   const [edit, setEdit] = useState<Partial<CarModel> | null>(null)

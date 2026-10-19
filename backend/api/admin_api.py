@@ -15,7 +15,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from brain.models import AuditLog, Label, Question
+from brain.models import AlgoVersion, AuditLog, Label, Question
 from fleet.models import CarModel, Device, Vehicle
 from roadnet.matching import get_index
 from roadnet.models import District, Road, Segment
@@ -81,6 +81,7 @@ def overview(request):
         series[r["d"].isoformat()]["clusters"] = r["n"]
     days_list = [(since + timedelta(days=i + 1)).date().isoformat() for i in range(days)]
     recent = EventCluster.objects.select_related("segment__road").order_by("-last_hit", "-id")[:8]
+    av = AlgoVersion.objects.filter(active=True).first()
     return JsonResponse({
         "days": days,
         "kpi": dict(trips=agg["n"], km=round(agg["km"] or 0, 1), events=RoadEvent.objects.filter(at__gte=since).count(),
@@ -93,6 +94,9 @@ def overview(request):
                        complaints_to_file=Complaint.objects.filter(status="filed", external_number="").count()),
         "series": [dict(day=d, **series.get(d, dict(trips=0, km=0.0, events=0, clusters=0))) for d in days_list],
         "recent": [cluster_json(c) for c in recent],
+        "classes": {**{k: 0 for k in "ABCDE"}, **dict(Segment.objects.exclude(cls="").values_list("cls").annotate(n=Count("id")))},
+        "segments_total": Segment.objects.count(),
+        "brain": dict(version=(av.version if av else None), f1=(((av.metrics or {}).get("model") or {}).get("f1") if av else None), labels=Label.objects.count()),
     })
 
 from brain.explain import analyze_cluster, explain_event, explain_cluster  # noqa: E402

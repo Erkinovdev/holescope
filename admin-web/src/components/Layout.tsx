@@ -3,21 +3,43 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ROLE_NAMES, type Role } from '../lib/api'
 import { useAuth } from '../lib/auth'
-import { Button, Chip, cx } from './ui'
+import { useGet } from '../lib/hooks'
+import { Icon, type IconName } from './icons'
+import { Button, ChromeCtx, cx } from './ui'
 
-interface NavItem { to: string; label: string; min: Role }
-export const NAV: NavItem[] = [
-  { to: '/', label: 'Обзор', min: 'analyst' },
-  { to: '/map', label: 'Карта', min: 'analyst' },
-  { to: '/events', label: 'События', min: 'analyst' },
-  { to: '/roads', label: 'Дороги', min: 'analyst' },
-  { to: '/devices', label: 'Устройства', min: 'analyst' },
-  { to: '/trips', label: 'Поездки', min: 'analyst' },
-  { to: '/dictionaries', label: 'Справочники', min: 'analyst' },
-  { to: '/complaints', label: 'Жалобы', min: 'analyst' },
-  { to: '/brain', label: 'Мозг', min: 'analyst' },
-  { to: '/access', label: 'Доступы', min: 'admin' },
+interface NavItem { to: string; label: string; min: Role; icon: IconName; badge?: 'events' | 'complaints' | 'questions' }
+interface NavGroup { title: string; items: NavItem[] }
+export const GROUPS: NavGroup[] = [
+  { title: 'ОПЕРАЦИИ', items: [
+    { to: '/', label: 'Обзор', min: 'analyst', icon: 'home' },
+    { to: '/map', label: 'Карта', min: 'analyst', icon: 'map' },
+    { to: '/events', label: 'События', min: 'analyst', icon: 'pulse', badge: 'events' },
+    { to: '/complaints', label: 'Жалобы', min: 'analyst', icon: 'flag', badge: 'complaints' },
+  ] },
+  { title: 'ДАННЫЕ', items: [
+    { to: '/roads', label: 'Дороги', min: 'analyst', icon: 'road' },
+    { to: '/districts', label: 'Районы', min: 'analyst', icon: 'layers' },
+    { to: '/devices', label: 'Устройства', min: 'analyst', icon: 'phone' },
+    { to: '/trips', label: 'Поездки', min: 'analyst', icon: 'wheel' },
+    { to: '/cars', label: 'Автомобили', min: 'analyst', icon: 'car' },
+    { to: '/dictionaries', label: 'Справочники', min: 'analyst', icon: 'doc' },
+  ] },
+  { title: 'МОЗГ', items: [
+    { to: '/brain', label: 'Мозг', min: 'analyst', icon: 'brain' },
+    { to: '/learning', label: 'Обучение', min: 'analyst', icon: 'chip' },
+    { to: '/questions', label: 'Вопросы', min: 'analyst', icon: 'help', badge: 'questions' },
+    { to: '/memory', label: 'Память · CSV', min: 'analyst', icon: 'db' },
+    { to: '/algo', label: 'Алгоритм', min: 'analyst', icon: 'sliders' },
+  ] },
+  { title: 'ПУБЛИКАЦИИ', items: [
+    { to: '/reports', label: 'Отчёты', min: 'analyst', icon: 'doc' },
+  ] },
+  { title: 'СИСТЕМА', items: [
+    { to: '/access', label: 'Доступы', min: 'admin', icon: 'key' },
+    { to: '/system', label: 'Система', min: 'analyst', icon: 'wrench' },
+  ] },
 ]
+export const NAV = GROUPS.flatMap((g) => g.items)
 
 type Theme = 'dark' | 'light'
 function useTheme(): [Theme, () => void] {
@@ -47,32 +69,53 @@ export default function Layout() {
   const { me, can, logout } = useAuth()
   const [theme, toggle] = useTheme()
   const loc = useLocation()
+  const badges = useGet<{ events: number; complaints: number; questions: number; algo: string }>('/admin/badges', undefined, { refetchMs: 60_000 })
+  const initials = (me?.username ?? '?').slice(0, 2).toUpperCase()
+  const chrome = (
+    <>
+      {badges.data?.algo && <span className="inline-flex items-center gap-2 rounded-full bg-amber-dim px-3 py-1.5 text-xs font-semibold text-amber-text"><span className="h-2 w-2 rounded-full bg-amber" aria-hidden />Правила {badges.data.algo}</span>}
+      <span className="rounded-full bg-info/15 px-3 py-1.5 text-xs font-semibold text-info">Ташкент</span>
+      <span title={me ? `${me.username} · ${ROLE_NAMES[me.role]}` : ''} className="grid h-9 w-9 place-items-center rounded-full bg-info/20 text-xs font-bold text-info">{initials}</span>
+    </>
+  )
   return (
-    <div className="flex h-full">
-      <aside className="flex w-60 shrink-0 flex-col gap-1 border-r border-line bg-surface px-4 py-6" aria-label="Разделы">
-        <div className="mb-1 flex items-center gap-2.5 py-1"><Logo /><span className="text-lg font-bold">Holescope</span></div>
-        <div className="mb-3 text-[11px] font-semibold tracking-widest text-muted">АДМИНКА</div>
-        <nav className="flex flex-col gap-1">
-          {NAV.filter((n) => can(n.min)).map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => cx('rounded-xl px-3 py-2.5 text-sm font-medium transition', isActive ? 'bg-amber-dim font-semibold text-amber-text' : 'text-muted hover:bg-raised hover:text-ink')}>
-              {n.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="mt-auto flex flex-col gap-2 pt-4">
-          <div className="text-xs text-muted">Вы вошли как</div>
-          <div className="flex items-center gap-2"><span className="font-semibold">{me?.username}</span><Chip tone="info">{me ? ROLE_NAMES[me.role] : ''}</Chip></div>
-          <div className="flex gap-2">
-            <Button small onClick={toggle} aria-label="Переключить тему">{theme === 'dark' ? 'Светлая' : 'Тёмная'}</Button>
-            <Button small kind="ghost" onClick={logout}>Выйти</Button>
+    <ChromeCtx.Provider value={chrome}>
+      <div className="flex h-full">
+        <aside className="flex w-[248px] shrink-0 flex-col overflow-y-auto border-r border-line bg-surface px-3 py-5" aria-label="Разделы">
+          <div className="mb-4 flex items-center gap-2.5 px-2"><Logo size={34} /><div className="leading-tight"><div className="text-lg font-bold">Holescope</div><div className="text-[10px] font-semibold tracking-[0.18em] text-muted">АДМИНКА</div></div></div>
+          <nav className="flex flex-col gap-0.5">
+            {GROUPS.map((g) => {
+              const items = g.items.filter((n) => can(n.min))
+              if (!items.length) return null
+              return (
+                <div key={g.title} className="mb-1.5">
+                  <div className="px-3 pb-1 pt-3 text-[10px] font-semibold tracking-[0.18em] text-muted">{g.title}</div>
+                  {items.map((n) => {
+                    const cnt = n.badge ? badges.data?.[n.badge] : 0
+                    return (
+                      <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => cx('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition', isActive ? 'bg-amber-dim font-semibold text-amber-text' : 'text-ink/85 hover:bg-raised')}>
+                        <Icon name={n.icon} size={19} />
+                        <span>{n.label}</span>
+                        {!!cnt && <span className="ml-auto rounded-full bg-amber/20 px-2 py-0.5 text-[11px] font-bold text-amber-text">{cnt}</span>}
+                      </NavLink>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </nav>
+          <div className="mt-auto flex items-center gap-2 border-t border-line px-2 pt-4">
+            <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{me?.username}</div><div className="text-xs text-muted">{me ? ROLE_NAMES[me.role] : ''}</div></div>
+            <Button small onClick={toggle} aria-label="Переключить тему"><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} /></Button>
+            <Button small kind="ghost" onClick={logout} aria-label="Выйти"><Icon name="logout" size={15} /></Button>
           </div>
-        </div>
-      </aside>
-      <main className="min-w-0 flex-1 overflow-auto p-7">
-        <motion.div key={loc.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }} className="h-full">
-          <Outlet />
-        </motion.div>
-      </main>
-    </div>
+        </aside>
+        <main className="min-w-0 flex-1 overflow-auto p-8">
+          <motion.div key={loc.pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }} className="h-full">
+            <Outlet />
+          </motion.div>
+        </main>
+      </div>
+    </ChromeCtx.Provider>
   )
 }

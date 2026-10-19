@@ -100,6 +100,9 @@ export interface Overview {
   queues: { candidates_single: number; questions_open: number; complaints_to_file: number }
   series: { day: string; trips: number; km: number; events: number; clusters: number }[]
   recent: Cluster[]
+  classes: Record<string, number>
+  segments_total: number
+  brain: { version: string | null; f1: number | null; labels: number }
 }
 export interface Vehicle {
   id: number; name: string; car_model_id: number | null; car_model: string | null; year: number | null; rim_inch: number | null; tire_pressure_bar: number | null

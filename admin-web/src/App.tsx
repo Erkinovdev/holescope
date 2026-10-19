@@ -14,10 +14,18 @@ import Login from './pages/Login'
 import Overview from './pages/Overview'
 import Roads from './pages/Roads'
 import Trips, { TripPage } from './pages/Trips'
+import Districts from './pages/Districts'
+import Learning from './pages/Learning'
+import Reports from './pages/Reports'
+import System from './pages/System'
 
 // тяжёлые страницы (карта, 3D) грузим по требованию
 const MapPage = lazy(() => import('./pages/MapPage'))
 const Brain = lazy(() => import('./pages/Brain'))
+const Questions = lazy(() => import('./pages/Wrappers').then((m) => ({ default: m.Questions })))
+const Memory = lazy(() => import('./pages/Wrappers').then((m) => ({ default: m.Memory })))
+const Algo = lazy(() => import('./pages/Wrappers').then((m) => ({ default: m.Algo })))
+const Cars = lazy(() => import('./pages/Wrappers').then((m) => ({ default: m.Cars })))
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 15_000, refetchOnWindowFocus: false } } })
 
@@ -40,6 +48,14 @@ function Gate() {
           <Route path="dictionaries" element={<Dictionaries />} />
           <Route path="complaints" element={<Complaints />} />
           <Route path="brain" element={<Brain />} />
+          <Route path="learning" element={<Learning />} />
+          <Route path="questions" element={<Questions />} />
+          <Route path="memory" element={<Memory />} />
+          <Route path="algo" element={<Algo />} />
+          <Route path="districts" element={<Districts />} />
+          <Route path="cars" element={<Cars />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="system" element={<System />} />
           <Route path="access" element={can('admin') ? <Access /> : <Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

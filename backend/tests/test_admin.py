@@ -331,3 +331,12 @@ def test_csv_upload_review_and_preview(staff, tmp_path, settings):
     assert pv["current"]["total"] == 37 and pv["preview"]["total"] < 37 and pv["removed"] > 0 and pv["added"] == 0
     assert c.post(f"{A}/brain/preview", json.dumps({"raw_id": rid, "params": {"floor": 0}}), content_type=J, headers=tok["analyst"]).status_code == 400
     assert c.post(f"{A}/brain/preview", json.dumps({"raw_id": 999, "params": {}}), content_type=J, headers=tok["analyst"]).status_code == 404
+
+
+def test_system_and_badges(staff):
+    c, tok = staff
+    assert c.get(f"{A}/badges").status_code == 401
+    b = c.get(f"{A}/badges", headers=tok["analyst"]).json()
+    assert set(b) >= {"events", "complaints", "questions", "algo"}
+    s = c.get(f"{A}/system", headers=tok["analyst"]).json()
+    assert s["services"][0]["state"] == "ok" and "counts" in s and isinstance(s["log"], list)

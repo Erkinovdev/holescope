@@ -92,3 +92,40 @@ export function SignalChart({ t, vz, events, hands, selected, onSelect, height =
     </svg>
   )
 }
+
+/** Мини-график тренда для карточек показателей. */
+export function Sparkline({ data, color = 'var(--amber)', height = 36 }: { data: number[]; color?: string; height?: number }) {
+  if (data.length < 2) return <div style={{ height }} />
+  const W = 200, lo = Math.min(...data), hi = Math.max(...data), span = hi - lo || 1
+  const pts = data.map((v, i) => [(i * W) / (data.length - 1), height - 4 - ((v - lo) / span) * (height - 8)] as const)
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('')
+  return (
+    <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
+      <path d={d} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+export interface Slice { label: string; value: number; color: string }
+/** Кольцевая диаграмма с легендой (доли в процентах). */
+export function Donut({ slices, size = 150 }: { slices: Slice[]; size?: number }) {
+  const total = slices.reduce((a, s) => a + s.value, 0)
+  const r = 54, C = 2 * Math.PI * r
+  let off = 0
+  return (
+    <div className="flex items-center gap-5">
+      <svg width={size} height={size} viewBox="0 0 140 140" role="img" aria-label="Распределение по классам" className="shrink-0 -rotate-90">
+        <circle cx="70" cy="70" r={r} fill="none" stroke="var(--bg-raised)" strokeWidth="14" />
+        {total > 0 && slices.map((s) => {
+          const len = (s.value / total) * C
+          const el = <circle key={s.label} cx="70" cy="70" r={r} fill="none" stroke={s.color} strokeWidth="14" strokeDasharray={`${Math.max(0, len - 2)} ${C}`} strokeDashoffset={-off}><title>{`${s.label}: ${s.value}`}</title></circle>
+          off += len
+          return el
+        })}
+      </svg>
+      <ul className="flex flex-col gap-1.5 text-sm">
+        {slices.map((s) => <li key={s.label} className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.color }} /><span className="w-16">{s.label}</span><b className="text-muted">{total ? Math.round((s.value / total) * 100) : 0}%</b></li>)}
+      </ul>
+    </div>
+  )
+}

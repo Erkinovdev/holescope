@@ -116,7 +116,7 @@ describe('обзор', () => {
     mockApi({ 'GET /admin/me': { username: 'a', role: 'analyst', role_name: 'аналитик' }, 'GET /admin/overview': overview })
     wrap(<Overview />)
     expect(await screen.findByText('345,6')).toBeInTheDocument()
-    expect(screen.getByText('Кандидаты с одним проездом')).toBeInTheDocument()
+    expect(screen.getByText('Кандидаты без подтверждения')).toBeInTheDocument()
     expect(screen.getByText('21')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'ул. Навои' })).toHaveAttribute('href', '/events?focus=7')
   })
