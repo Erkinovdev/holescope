@@ -99,6 +99,18 @@ class HoliVoice {
   /// Последняя произнесённая фраза (для показа на экране).
   final lastText = ValueNotifier<String>('');
 
+  /// Короткий мягкий сигнал: «сейчас спрошу про удар».
+  Future<void> chime() async {
+    const asset = 'assets/holi/chime.wav';
+    try {
+      await session.begin();
+      _sessionOn = true;
+      await player.play(asset);
+    } catch (_) {
+      // не критично: вопрос прозвучит и без сигнала
+    }
+  }
+
   /// Фразы из ресурсов приложения.
   static Future<HoliVoice> load({required String Function() lang}) async {
     final raw =

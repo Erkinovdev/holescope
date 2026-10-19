@@ -150,7 +150,8 @@ def test_question_flow_and_answer(c):
     h = {"X-Device-Token": tok}
     post_trip(c, tok, trip([ev(10)]))
     qs = c.get("/api/v1/questions/next", headers=h).json()["questions"]
-    assert len(qs) == 1 and "manhole" in qs[0]["options"]
+    assert len(qs) == 1 and "manhole" in qs[0]["all_options"] and qs[0]["options"][-1] == "not_sure" and "handled" in qs[0]["options"]
+    assert 4 <= len(qs[0]["options"]) <= 10 and abs(sum(qs[0]["probs"].values()) - 1) < 0.02
     assert answer(c, tok, qs[0]["id"], "manhole").status_code == 200
     assert Label.objects.get().label == "manhole"
     assert RoadEvent.objects.get().user_label == "manhole"

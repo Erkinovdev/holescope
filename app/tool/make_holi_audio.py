@@ -50,6 +50,13 @@ for it in _tx.ITEMS:
         P.append((f"mark_{it.key}", f"Отметила: {it.ru.lower()}", f"{it.uz} belgilandi"))
 for k, (cls, ru, uz) in _tx.ROAD_RATINGS.items():
     P.append((f"rate_{k}", f"Дорога {ru.lower()}, записала", f"Yo'l {uz.lower()}, yozib oldim"))
+P += [
+    ("ask_what", "Что это было?", "Bu nima edi?"),
+    ("thanks_short", "Спасибо", "Rahmat"),
+]
+for it in _tx.ITEMS:
+    if it.driver or it.key in ("handled", "noise"):
+        P.append((f"ask_guess_{it.key}", f"Похоже, {it.ru.lower()}. Верно?", f"Ehtimol, {it.uz.lower()}. To'g'rimi?"))
 for m, (ru, uz) in DIST.items():  # фразы с расстоянием: сервис подбирает ближайшее значение
     P.append((f"ahead_pothole_{m}", f"Впереди яма, {ru} метров" if m not in (100,) else "Впереди яма, сто метров", f"Oldinda o'ra, {uz} metr"))
     P.append((f"ahead_rough_{m}", f"Впереди разбитый участок, {ru} метров", f"Oldinda yo'l buzilgan, {uz} metr"))

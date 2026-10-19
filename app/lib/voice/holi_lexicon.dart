@@ -32,8 +32,8 @@ const marks = <LexEntry>[
   LexEntry('rutting', ['колея', 'колеи', 'koleya', 'izlar']),
   LexEntry('cobble', ['брусчатка', 'плитка', 'bruschatka', 'plitka']),
   LexEntry('curb', ['бордюр', 'бордюра', 'bordyur']),
-  LexEntry('handled', ['телефон упал', 'телефон трогал', 'трогали телефон', 'telefon tushdi']),
-  LexEntry('noise', ['ничего особенного', 'ничего', 'alohida narsa yoq']),
+  LexEntry('handled', ['ложное', 'ложная', 'ложное срабатывание', 'ошибка', 'телефон упал', 'телефон трогал', 'трогали телефон', 'yolgon', 'telefon tushdi']),
+  LexEntry('noise', ['ничего особенного', 'ничего', 'ровно было', 'alohida narsa yoq', 'hech narsa']),
 ];
 
 /// Оценка ровности участка, который только что проехали.
@@ -51,6 +51,7 @@ const controls = <LexEntry>[
   LexEntry('yes', ['да', 'ага', 'угу', 'верно', 'точно', 'так точно', 'конечно', 'ha', 'xa', "to'g'ri", 'albatta']),
   LexEntry('no', ['нет', 'неа', 'не было', 'не надо', "yo'q", 'yoq', 'yok', "bo'lmadi"]),
   LexEntry('stop', ['все', 'хватит', 'стоп', 'спасибо', 'достаточно', 'закончили', "bo'ldi", 'yetarli', 'rahmat']),
+  LexEntry('skip', ['не знаю', 'пропусти', 'пропустить', 'не помню', 'bilmayman', 'otkazib yubor']),
   LexEntry('help', ['помощь', 'что ты умеешь', 'команды', 'что сказать', 'yordam', 'nima deyman']),
 ];
 

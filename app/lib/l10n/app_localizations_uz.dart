@@ -811,4 +811,31 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get optLess => 'Yig‘ish';
+
+  @override
+  String get eventAskTitle => 'Bu nima edi?';
+
+  @override
+  String eventAgo(int speed, int sec) {
+    return '$speed km/s · $sec s oldin';
+  }
+
+  @override
+  String eventGuessHint(String name, int p) {
+    return 'Ehtimol: $name · $p%';
+  }
+
+  @override
+  String eventChosen(String name) {
+    return 'Yozildi: $name';
+  }
+
+  @override
+  String get eventViaVoice => 'ovoz bilan tanlandi';
+
+  @override
+  String get eventViaTap => 'bosib tanlandi';
+
+  @override
+  String get eventClose => 'Yopish';
 }

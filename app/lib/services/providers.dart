@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
@@ -10,16 +11,17 @@ import '../l10n/app_localizations.dart';
 import '../voice/holi_controller.dart';
 import '../voice/holi_phrase.dart';
 import '../voice/holi_voice.dart';
+import '../algo/event_guess.dart';
 import '../voice/cloud_speech.dart';
 import '../voice/speech_engine.dart';
 import '../voice/voice_recognizer.dart';
 import 'ahead_warner.dart';
+import 'local_db.dart';
 import 'announcer.dart';
 import 'api_client.dart';
 import 'config.dart';
 import 'device_auth.dart';
 import 'engine.dart';
-import 'local_db.dart';
 import 'mark_service.dart';
 import 'permissions.dart';
 import 'sensor_source.dart';
@@ -58,6 +60,24 @@ String _voiceLang(Ref ref) {
 /// Озвучка Холи (файлы mp3, запасной вариант — системный голос).
 final holiVoiceProvider = Provider<Future<HoliVoice>>((ref) => HoliVoice.load(lang: () => _voiceLang(ref)));
 
+/// Что телефон уже знает о месте удара: известный объект рядом (из локального кэша ям) — подсказка для догадки.
+GuessContext _contextFor(RecorderEngine eng, HoliCandidate c) {
+  CachedCluster? best;
+  var bd = 25.0;
+  for (final k in eng.db.clustersNear(c.lat, c.lon, 30)) {
+    if (k.status == 'false' || k.status == 'fixed') continue;
+    final p = AheadWarner.project(c.lat, c.lon, 0, k.lat, k.lon);
+    final d = math.sqrt(p.along * p.along + p.across * p.across);
+    if (d < bd) {
+      bd = d;
+      best = k;
+    }
+  }
+  if (best == null) return const GuessContext();
+  final type = switch (best.type) { 'rough_patch' => 'washboard', final t => t };
+  return GuessContext(nearType: type, nearPasses: best.status == 'confirmed' ? 3 : 1);
+}
+
 /// «Слух» Холи: распознавание на телефоне с запасным вариантом на сервере (режим выбирается в настройках).
 final voiceRecognizerProvider = Provider<VoiceRecognizer>((ref) {
   final eng = ref.read(engineProvider);
@@ -80,10 +100,17 @@ final holiControllerProvider = FutureProvider<HoliController>((ref) async {
   final voice = await ref.watch(holiVoiceProvider);
   final eng = ref.read(engineProvider);
   final marks = MarkService(db: eng.db, api: eng.api, auth: eng.auth, platform: eng.platform);
-  final ctrl = HoliController(voice: voice, speech: ref.read(voiceRecognizerProvider), marks: marks, fixAt: eng.fixAt, lang: () => _voiceLang(ref));
+  final ctrl = HoliController(
+    voice: voice,
+    speech: ref.read(voiceRecognizerProvider),
+    marks: marks,
+    fixAt: eng.fixAt,
+    lang: () => _voiceLang(ref),
+    speakEnabled: () => ref.read(settingsProvider).voice,
+    contextFor: (c) => _contextFor(eng, c),
+  );
   eng.onCandidate = (c) {
-    final s = ref.read(settingsProvider);
-    if (s.holiAsk && s.voice) unawaited(ctrl.askConfirm(c));
+    if (ref.read(settingsProvider).holiAsk) unawaited(ctrl.askEvent(c));
   };
   eng.onTripDone = (t) {
     ctrl.resetTrip();

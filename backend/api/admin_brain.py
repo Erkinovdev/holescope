@@ -233,7 +233,8 @@ def train_now(request):
 def algo_params_public(request):
     """Публично: параметры активной версии правил — приложение подтягивает их и применяет на устройстве."""
     av = AlgoVersion.objects.filter(active=True, kind="rules").first()
-    return JsonResponse(dict(version=av.version if av else ALGO_VERSION, params=active_params()))
+    from brain import guesser
+    return JsonResponse(dict(version=av.version if av else ALGO_VERSION, params=active_params(), guess=guesser.active_params()))
 
 
 # ───────────────────────── загрузки CSV, просмотр, предпросмотр ─────────────────────────

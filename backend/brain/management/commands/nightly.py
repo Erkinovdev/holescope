@@ -28,6 +28,8 @@ class Command(BaseCommand):
         call_command("train_brain", stdout=self.stdout)
         from brain import training
         out(f"типы: {training.train_types().log}")
+        from brain import guesser
+        out(f"догадка: {guesser.train_guess().log}")
         call_command("brain_snapshot", stdout=self.stdout)
         for p in ("week", "month", "year"):
             out(f"награды {p}: {len(awards.compute_awards(p))}")

@@ -277,14 +277,14 @@
  },
  {
   "key": "mark_handled",
-  "ru": "Отметила: телефон трогали / упал",
-  "uz": "Telefonga tegildi / tushib ketdi belgilandi",
+  "ru": "Отметила: ложное срабатывание",
+  "uz": "Yolg‘on signal belgilandi",
   "file": "mark_handled"
  },
  {
   "key": "mark_noise",
-  "ru": "Отметила: ничего особенного",
-  "uz": "Alohida narsa yo‘q belgilandi",
+  "ru": "Отметила: ничего",
+  "uz": "Hech narsa belgilandi",
   "file": "mark_noise"
  },
  {
@@ -316,6 +316,144 @@
   "ru": "Дорога разбитая, записала",
   "uz": "Yo'l buzilgan, yozib oldim",
   "file": "rate_road_e"
+ },
+ {
+  "key": "ask_what",
+  "ru": "Что это было?",
+  "uz": "Bu nima edi?",
+  "file": "ask_what"
+ },
+ {
+  "key": "thanks_short",
+  "ru": "Спасибо",
+  "uz": "Rahmat",
+  "file": "thanks_short"
+ },
+ {
+  "key": "ask_guess_pothole_light",
+  "ru": "Похоже, мелкая яма. Верно?",
+  "uz": "Ehtimol, sayoz o‘ra. To'g'rimi?",
+  "file": "ask_guess_pothole_light"
+ },
+ {
+  "key": "ask_guess_pothole_mid",
+  "ru": "Похоже, яма средняя. Верно?",
+  "uz": "Ehtimol, o‘rtacha o‘ra. To'g'rimi?",
+  "file": "ask_guess_pothole_mid"
+ },
+ {
+  "key": "ask_guess_pothole_deep",
+  "ru": "Похоже, глубокая яма. Верно?",
+  "uz": "Ehtimol, chuqur o‘ra. To'g'rimi?",
+  "file": "ask_guess_pothole_deep"
+ },
+ {
+  "key": "ask_guess_pothole_danger",
+  "ru": "Похоже, опасная яма. Верно?",
+  "uz": "Ehtimol, xavfli o‘ra. To'g'rimi?",
+  "file": "ask_guess_pothole_danger"
+ },
+ {
+  "key": "ask_guess_broken",
+  "ru": "Похоже, разбитый участок (россыпь ям). Верно?",
+  "uz": "Ehtimol, buzilgan qism (ko‘p o‘ralar). To'g'rimi?",
+  "file": "ask_guess_broken"
+ },
+ {
+  "key": "ask_guess_patch",
+  "ru": "Похоже, заплатка (ямочный ремонт). Верно?",
+  "uz": "Ehtimol, yamoq (ta’mirlangan joy). To'g'rimi?",
+  "file": "ask_guess_patch"
+ },
+ {
+  "key": "ask_guess_crack",
+  "ru": "Похоже, трещина / разлом. Верно?",
+  "uz": "Ehtimol, yoriq / darz. To'g'rimi?",
+  "file": "ask_guess_crack"
+ },
+ {
+  "key": "ask_guess_bump_low",
+  "ru": "Похоже, лежачий пологий. Верно?",
+  "uz": "Ehtimol, yotiq politsiyachi (past). To'g'rimi?",
+  "file": "ask_guess_bump_low"
+ },
+ {
+  "key": "ask_guess_bump",
+  "ru": "Похоже, лежачий полицейский. Верно?",
+  "uz": "Ehtimol, yotiq politsiyachi. To'g'rimi?",
+  "file": "ask_guess_bump"
+ },
+ {
+  "key": "ask_guess_bump_high",
+  "ru": "Похоже, лежачий крутой. Верно?",
+  "uz": "Ehtimol, yotiq politsiyachi (baland). To'g'rimi?",
+  "file": "ask_guess_bump_high"
+ },
+ {
+  "key": "ask_guess_manhole",
+  "ru": "Похоже, люк. Верно?",
+  "uz": "Ehtimol, lyuk. To'g'rimi?",
+  "file": "ask_guess_manhole"
+ },
+ {
+  "key": "ask_guess_manhole_sunk",
+  "ru": "Похоже, люк просел. Верно?",
+  "uz": "Ehtimol, lyuk cho‘kkan. To'g'rimi?",
+  "file": "ask_guess_manhole_sunk"
+ },
+ {
+  "key": "ask_guess_manhole_raised",
+  "ru": "Похоже, люк выступает. Верно?",
+  "uz": "Ehtimol, lyuk ko‘tarilib turibdi. To'g'rimi?",
+  "file": "ask_guess_manhole_raised"
+ },
+ {
+  "key": "ask_guess_rail_tram",
+  "ru": "Похоже, трамвайные рельсы. Верно?",
+  "uz": "Ehtimol, tramvay relslari. To'g'rimi?",
+  "file": "ask_guess_rail_tram"
+ },
+ {
+  "key": "ask_guess_rail_train",
+  "ru": "Похоже, ж/д переезд. Верно?",
+  "uz": "Ehtimol, temir yo‘l o‘tish joyi. To'g'rimi?",
+  "file": "ask_guess_rail_train"
+ },
+ {
+  "key": "ask_guess_joint",
+  "ru": "Похоже, стык плит / шов. Верно?",
+  "uz": "Ehtimol, plita tutashuvi / chok. To'g'rimi?",
+  "file": "ask_guess_joint"
+ },
+ {
+  "key": "ask_guess_washboard",
+  "ru": "Похоже, волнистость (гребёнка). Верно?",
+  "uz": "Ehtimol, to‘lqinsimon yo‘l. To'g'rimi?",
+  "file": "ask_guess_washboard"
+ },
+ {
+  "key": "ask_guess_rutting",
+  "ru": "Похоже, колея. Верно?",
+  "uz": "Ehtimol, izlar (koleya). To'g'rimi?",
+  "file": "ask_guess_rutting"
+ },
+ {
+  "key": "ask_guess_curb",
+  "ru": "Похоже, бордюр / съезд. Верно?",
+  "uz": "Ehtimol, bordyur / tushish joyi. To'g'rimi?",
+  "file": "ask_guess_curb"
+ },
+ {
+  "key": "ask_guess_handled",
+  "ru": "Похоже, ложное срабатывание. Верно?",
+  "uz": "Ehtimol, yolg‘on signal. To'g'rimi?",
+  "file": "ask_guess_handled"
+ },
+ {
+  "key": "ask_guess_noise",
+  "ru": "Похоже, ничего. Верно?",
+  "uz": "Ehtimol, hech narsa. To'g'rimi?",
+  "file": "ask_guess_noise"
  },
  {
   "key": "ahead_pothole_50",

@@ -1,17 +1,23 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:holescope/algo/event_guess.dart';
 import 'package:holescope/algo/params.dart';
 import 'api_client.dart';
 
 /// Параметры алгоритма с сервера: берём сохранённые при запуске, затем обновляем в фоне. Любая ошибка — остаёмся на текущих.
 class AlgoParamsSync {
   static const _key = 'algo_params_json';
+  static const _guessKey = 'guess_params_json';
 
   /// Подставляет последние сохранённые параметры (без сети).
   static void loadCached(SharedPreferences prefs) {
     try {
       final raw = prefs.getString(_key);
       if (raw != null) AlgoParams.current = AlgoParams.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {}
+    try {
+      final g = prefs.getString(_guessKey);
+      if (g != null) GuessParams.current = GuessParams.fromJson(jsonDecode(g) as Map<String, dynamic>);
     } catch (_) {}
   }
 
@@ -23,6 +29,11 @@ class AlgoParamsSync {
       if (p is! Map<String, dynamic>) return false;
       AlgoParams.current = AlgoParams.fromJson(p);
       await prefs.setString(_key, jsonEncode(p));
+      final g = data['guess'];
+      if (g is Map<String, dynamic>) {
+        GuessParams.current = GuessParams.fromJson(g);
+        await prefs.setString(_guessKey, jsonEncode(g));
+      }
       return true;
     } catch (_) {
       return false;

@@ -27,6 +27,8 @@ enum HoliPhrase {
   okEnd('ok_end'),
   help('help'),
   notPothole('mark_not_pothole'),
+  askWhat('ask_what'),
+  thanksShort('thanks_short'),
 
   /// Фразы с расстоянием: реальный ключ — `ahead_pothole_<метры>`, см. [distanceKey].
   aheadPothole('ahead_pothole'),

@@ -14,6 +14,7 @@ import 'package:holescope/l10n/app_localizations.dart';
 import 'package:holescope/services/permissions.dart';
 import 'package:holescope/services/providers.dart';
 import 'package:holescope/voice/voice_check_screen.dart';
+import 'package:holescope/voice/event_prompt_card.dart';
 
 final _root = GlobalKey<NavigatorState>();
 
@@ -115,6 +116,7 @@ class _HoleScopeAppState extends ConsumerState<HoleScopeApp> with WidgetsBinding
       onGenerateTitle: (c) => AppLocalizations.of(c).appName,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
+      builder: (context, child) => Stack(children: [child ?? const SizedBox.shrink(), const EventPromptOverlay()]),
       themeMode: s.themeMode,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),

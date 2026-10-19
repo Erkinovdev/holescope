@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../algo/trip_state.dart';
 import '../core/settings.dart';
+import '../algo/event_guess.dart';
 import '../voice/holi_controller.dart';
 import 'ahead_warner.dart';
 import 'announcer.dart';
@@ -42,8 +43,17 @@ class RecorderEngine {
         unawaited(flushOutbox());
         onTripDone?.call(t);
       },
-      onCandidate: (at, lat, lon, hd, score) =>
-          onCandidate?.call(HoliCandidate(at: DateTime.fromMillisecondsSinceEpoch(at.round()), lat: lat, lon: lon, heading: hd, score: score)),
+      onCandidate: (lc) {
+        final e = lc.event;
+        onCandidate?.call(HoliCandidate(
+          at: lc.at,
+          lat: e.lat,
+          lon: e.lon,
+          heading: e.heading.isNaN ? null : e.heading,
+          score: e.score,
+          features: EventFeatures(score: e.score, speedKmh: e.speedKmh, durMs: e.durMs.toDouble(), pair: e.pair, gyroPeak: e.gyroPeak, hfShare: e.hfShare, peak: e.peak),
+        ));
+      },
     );
     warner = AheadWarner(db, api, config: () => AheadConfig(warnDistanceM: settings().warnDistanceM));
     outbox = OutboxWorker(db, api);

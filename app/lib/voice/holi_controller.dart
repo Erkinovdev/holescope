@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../algo/event_guess.dart';
+import '../algo/taxonomy_data.dart';
 import '../services/mark_service.dart';
 import 'holi_commands.dart';
 import 'holi_log.dart';
@@ -13,27 +15,49 @@ enum HoliStatus { idle, speaking, listening, thinking }
 
 /// Что показывать на экране: имя помощницы, статус, услышанная и сказанная фраза, причина сбоя.
 class HoliUi {
-  const HoliUi({this.status = HoliStatus.idle, this.heard = '', this.said = '', this.error, this.engine = '', this.detail = ''});
+  const HoliUi({this.status = HoliStatus.idle, this.heard = '', this.said = '', this.error, this.engine = '', this.detail = '', this.prompt});
   final HoliStatus status;
   final String heard; // что услышала Холи
   final String said; // что сказала Холи
   final SpeechErrorKind? error; // почему не вышло (null — всё хорошо)
   final String engine; // device | cloud
   final String detail;
+  final EventPrompt? prompt; // вопрос «что это было?» по свежему удару (виден на экране с вариантами)
   bool get active => status != HoliStatus.idle;
-  HoliUi copyWith({HoliStatus? status, String? heard, String? said, Object? error = _keep, String? engine, String? detail}) =>
-      HoliUi(status: status ?? this.status, heard: heard ?? this.heard, said: said ?? this.said, error: identical(error, _keep) ? this.error : error as SpeechErrorKind?, engine: engine ?? this.engine, detail: detail ?? this.detail);
+  HoliUi copyWith({HoliStatus? status, String? heard, String? said, Object? error = _keep, String? engine, String? detail, Object? prompt = _keep}) => HoliUi(
+        status: status ?? this.status,
+        heard: heard ?? this.heard,
+        said: said ?? this.said,
+        error: identical(error, _keep) ? this.error : error as SpeechErrorKind?,
+        engine: engine ?? this.engine,
+        detail: detail ?? this.detail,
+        prompt: identical(prompt, _keep) ? this.prompt : prompt as EventPrompt?,
+      );
 }
 
 const _keep = Object();
 
 /// Событие, которое алгоритм счёл ямой; по нему Холи спрашивает «да/нет».
 class HoliCandidate {
-  const HoliCandidate({required this.at, required this.lat, required this.lon, this.heading, this.score = 0});
+  const HoliCandidate({required this.at, required this.lat, required this.lon, this.heading, this.score = 0, this.features});
   final DateTime at;
   final double lat, lon;
   final double? heading;
   final double score;
+  final EventFeatures? features; // показатели удара: по ним строится догадка и отбор вариантов
+}
+
+/// Вопрос «что это было?»: варианты, догадка модели и выбор водителя.
+class EventPrompt {
+  const EventPrompt({required this.cand, required this.guess, required this.options, this.chosen, this.via = '', this.dismissed = false});
+  final HoliCandidate cand;
+  final Guess guess;
+  final List<String> options; // правдоподобные варианты по этому удару
+  final String? chosen; // ключ выбранного варианта
+  final String via; // voice | tap
+  final bool dismissed;
+  bool get answered => chosen != null;
+  EventPrompt copyWith({String? chosen, String? via, bool? dismissed}) => EventPrompt(cand: cand, guess: guess, options: options, chosen: chosen ?? this.chosen, via: via ?? this.via, dismissed: dismissed ?? this.dismissed);
 }
 
 /// Диалог Холи: вызов («Привет, Холи» / кнопка), команды (любой вариант из справочника, оценка дороги, отмена) и вопрос «да/нет» после авто-кандидата.
@@ -55,9 +79,15 @@ class HoliController {
     this.silence = const Duration(milliseconds: 2200),
     this.settle = const Duration(milliseconds: 700),
     this.markBackSeconds = 2,
-    this.askEvery = const Duration(seconds: 60),
-    this.maxAsksPerTrip = 3,
+    this.askEvery = const Duration(seconds: 25),
+    this.maxAsksPerTrip = 20,
     this.maxTurns = 4,
+    this.contextFor,
+    this.speakEnabled,
+    this.eventWindow = const Duration(seconds: 9),
+    this.eventNoSpeech = const Duration(seconds: 6),
+    this.cardHold = const Duration(seconds: 10),
+    this.confirmThreshold = 0.5,
   }) : _now = now ?? DateTime.now;
 
   final HoliVoice voice;
@@ -65,7 +95,10 @@ class HoliController {
   final MarkService marks;
   final MarkFix? Function(DateTime t) fixAt;
   final String Function() lang;
-  final Duration firstWindow, firstNoSpeech, followWindow, followNoSpeech, confirmWindow, confirmNoSpeech, silence, settle, askEvery;
+  final Duration firstWindow, firstNoSpeech, followWindow, followNoSpeech, confirmWindow, confirmNoSpeech, silence, settle, askEvery, eventWindow, eventNoSpeech, cardHold;
+  final double confirmThreshold;
+  final GuessContext Function(HoliCandidate cand)? contextFor; // известный объект рядом (из кэша карты)
+  final bool Function()? speakEnabled; // голос выключен в настройках: вопрос остаётся на экране без звука
   final int markBackSeconds, maxAsksPerTrip, maxTurns;
   final DateTime Function() _now;
 
@@ -218,6 +251,7 @@ class HoliController {
         await _say(marks.cancelLast() ? HoliPhrase.markCancel : HoliPhrase.markCancelNone);
         return true;
       case VoiceCommand.stop:
+      case VoiceCommand.skip:
         await _say(HoliPhrase.okEnd);
         return false;
       case VoiceCommand.help:
@@ -264,48 +298,120 @@ class HoliController {
     return last == null || _now().difference(last) >= askEvery;
   }
 
-  /// «Только что была яма? Скажите: да или нет». Тишина = «не услышала», ничего не отмечаем.
-  Future<void> askConfirm(HoliCandidate cand) async {
-    if (!canAsk()) return;
-    final prep = await speech.prepare();
-    if (prep != null && prep.failed) {
-      HoliLog.add('вопрос «да/нет» пропущен: ${prep.detail}');
-      return;
-    }
+  // ── вопрос «что это было?» сразу после удара ──
+  Timer? _cardTimer;
+  EventPrompt? get prompt => ui.value.prompt;
+
+  void _setPrompt(EventPrompt? p) => ui.value = ui.value.copyWith(prompt: p);
+
+  /// Какой ключ сохранить по сказанному: «яма» без уточнения → уровень по догадке; «это не яма» → «ничего».
+  String _mapKey(String key, Guess g) {
+    if (key == 'pothole') return g.top.startsWith('pothole_') ? g.top : 'pothole_mid';
+    if (key == 'not_pothole') return 'noise';
+    return key;
+  }
+
+  /// Спросить про свежий удар: сигнал, экран с вариантами и голос. Ответить можно голосом или нажатием на вариант.
+  Future<void> askEvent(HoliCandidate cand) async {
+    if (!canAsk() || cand.features == null) return;
+    final ctx = contextFor?.call(cand) ?? const GuessContext();
+    final guess = guessEvent(cand.features!, ctx);
+    final options = optionsFor(guess, driverOptionKeys, limit: 5);
     _busy = true;
     voice.hold();
     _asks++;
     _lastAsk = _now();
+    _cardTimer?.cancel();
+    _setPrompt(EventPrompt(cand: cand, guess: guess, options: options));
+    HoliLog.add('вопрос по удару: догадка ${guess.top} ${(guess.confidence * 100).round()}%, варианты $options');
     try {
-      await _say(HoliPhrase.askConfirm);
-      for (var attempt = 0; attempt < 2; attempt++) {
-        final out = await _listen(confirmWindow, confirmNoSpeech, confirm: true);
+      if (!(speakEnabled?.call() ?? true)) return; // тихий режим: выбор нажатием
+      await voice.chime();
+      if (prompt?.answered == true) return;
+      var confirm = guess.confidence >= confirmThreshold && guess.top != 'handled' && guess.top != 'noise';
+      final askKey = confirm ? 'ask_guess_${guess.top}' : 'ask_what';
+      if (voice.hasKey(askKey)) {
+        await _sayKey(askKey);
+      } else {
+        await _say(HoliPhrase.askWhat);
+      }
+      for (var attempt = 0; attempt < 2 && prompt?.answered != true && prompt?.dismissed != true; attempt++) {
+        final out = await _listen(eventWindow, eventNoSpeech, confirm: confirm);
+        if (prompt?.answered == true) return; // нажали вариант на экране
         if (out.failed) {
-          await _fail(out);
-          return;
+          _set(error: out.error, engine: out.engine, detail: out.detail);
+          break; // микрофон не работает — остаётся выбор на экране
         }
-        final c = HoliCommands.parse(out.text, confirm: true).command;
-        final fix = MarkFix(cand.at, cand.lat, cand.lon, cand.heading);
-        if (c == VoiceCommand.yes) {
-          marks.add(MarkKind.pothole, fix);
-          await _say(HoliPhrase.confirmYes);
-          return;
+        final p = HoliCommands.parse(out.text, confirm: confirm);
+        HoliLog.add('вопрос по удару: услышала "${out.text}" → ${p.command} ${p.key ?? ''}');
+        if (p.command == null) {
+          if (out.text.trim().isEmpty) break; // тишина: не докучаем, ждём нажатия
+          await _say(HoliPhrase.unknown);
+          continue;
         }
-        if (c == VoiceCommand.no) {
-          marks.add(MarkKind.notPothole, fix);
-          await _say(HoliPhrase.confirmNo);
-          return;
+        switch (p.command!) {
+          case VoiceCommand.yes:
+            if (confirm) return _choose(guess.top, 'voice');
+          case VoiceCommand.no:
+            if (confirm) {
+              confirm = false;
+              await _say(HoliPhrase.askWhat);
+              continue;
+            }
+          case VoiceCommand.mark:
+            return _choose(_mapKey(p.key!, guess), 'voice');
+          case VoiceCommand.skip:
+          case VoiceCommand.stop:
+          case VoiceCommand.cancel:
+            _setPrompt(prompt?.copyWith(dismissed: true));
+            return;
+          case VoiceCommand.rating:
+          case VoiceCommand.help:
+            break;
         }
-        if (out.text.trim().isEmpty || attempt == 1) {
-          await _say(HoliPhrase.noAnswer);
-          return;
-        }
-        await _say(HoliPhrase.repeat); // что-то услышала, но не «да/нет»
       }
     } finally {
       voice.release();
       await _finish();
+      _scheduleCardClear();
     }
+  }
+
+  /// Выбор варианта нажатием на экране (или голосом): сохраняет отметку, показывает выбранное и говорит «спасибо».
+  Future<void> selectOption(String key) async {
+    final pr = prompt;
+    if (pr == null || pr.answered) return;
+    await speech.cancel();
+    await voice.stop();
+    await _choose(key, 'tap');
+  }
+
+  Future<void> _choose(String key, String via) async {
+    final pr = prompt;
+    if (pr == null || pr.answered) return;
+    _setPrompt(pr.copyWith(chosen: key, via: via));
+    final c = pr.cand;
+    final top = pr.guess.ranked(3);
+    marks.add(MarkKind(key), MarkFix(c.at, c.lat, c.lon, c.heading), guess: {'top': pr.guess.top, 'p': pr.guess.confidence, 'v': GuessParams.current.version, 'top3': {for (final e in top) e.key: e.value}, 'via': via});
+    HoliLog.add('ответ по удару: $key ($via), догадка была ${pr.guess.top}');
+    _set(status: HoliStatus.speaking);
+    await voice.playKey('thanks_short');
+    await voice.idle;
+    _scheduleCardClear(after: const Duration(milliseconds: 2500));
+  }
+
+  void _scheduleCardClear({Duration? after}) {
+    _cardTimer?.cancel();
+    final pr = prompt;
+    if (pr == null) return;
+    _cardTimer = Timer(after ?? (pr.answered ? const Duration(milliseconds: 2500) : cardHold), () => _setPrompt(null));
+  }
+
+  /// Закрыть вопрос без ответа.
+  void dismissPrompt() {
+    _cardTimer?.cancel();
+    unawaited(speech.cancel());
+    _setPrompt(null);
   }
 
   /// Режим «всегда слушаю имя» (экран включён). Распознаёт «Привет, Холи» и сразу команду, если она в той же фразе.
@@ -371,6 +477,7 @@ class HoliController {
   void clearError() => ui.value = ui.value.copyWith(error: null, detail: '');
 
   void dispose() {
+    _cardTimer?.cancel();
     _wakeOn = false;
     ui.dispose();
   }

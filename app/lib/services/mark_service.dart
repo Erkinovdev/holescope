@@ -31,13 +31,14 @@ class MarkFix {
 }
 
 class MarkRecord {
-  MarkRecord({required this.id, required this.kind, required this.fix, required this.createdAt});
+  MarkRecord({required this.id, required this.kind, required this.fix, required this.createdAt, this.guess});
   final String id;
   final MarkKind kind;
   final MarkFix fix;
   final DateTime createdAt;
+  final Map<String, dynamic>? guess; // догадка модели на телефоне в момент вопроса (для оценки точности)
 
-  Map<String, dynamic> toJson() => {'client_id': id, 'kind': kind.wire, 'lat': fix.lat, 'lon': fix.lon, if (fix.heading != null) 'heading': fix.heading, 'at': fix.at.toUtc().toIso8601String()};
+  Map<String, dynamic> toJson() => {'client_id': id, 'kind': kind.wire, 'lat': fix.lat, 'lon': fix.lon, if (fix.heading != null) 'heading': fix.heading, 'at': fix.at.toUtc().toIso8601String(), if (guess != null) 'guess': guess};
 }
 
 /// Отметки водителя («яма», «люк», «не яма»). Отметка ждёт [holdFor] — за это время её можно отменить голосом; потом уходит на сервер.
@@ -59,8 +60,8 @@ class MarkService {
   int get pending => _held.length + _stored().length;
 
   /// Создаёт отметку в точке [fix]. Возвращает её, чтобы можно было отменить.
-  MarkRecord add(MarkKind kind, MarkFix fix) {
-    final r = MarkRecord(id: const Uuid().v4(), kind: kind, fix: fix, createdAt: _now());
+  MarkRecord add(MarkKind kind, MarkFix fix, {Map<String, dynamic>? guess}) {
+    final r = MarkRecord(id: const Uuid().v4(), kind: kind, fix: fix, createdAt: _now(), guess: guess);
     _held.add(r);
     _timers[r.id] = Timer(holdFor, () => _release(r));
     return r;

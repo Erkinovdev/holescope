@@ -11,7 +11,7 @@ from roadnet.geo import bearing
 from roadnet.matching import get_index
 from roadnet.models import Segment
 from telemetry.models import EventCluster, RoadEvent, SegmentScore, Trip
-from . import inference, road_stats, validation
+from . import guesser, inference, road_stats, validation
 from .active_learning import create_questions_for_trip
 
 
@@ -107,6 +107,7 @@ def ingest_trip(device: Device, payload: dict, validate: bool = True) -> Trip:
     idx = get_index() if use_map else None
     gain = device.calib_gain or 1.0
     av, model = inference.active_model() if use_map else (None, None)
+    guess_params = guesser.active_params()
     lvl_bounds = road_stats.active_level_bounds()  # None — уровень остаётся таким, как посчитал телефон
     if use_map:
         for e in events:
@@ -127,7 +128,8 @@ def ingest_trip(device: Device, payload: dict, validate: bool = True) -> Trip:
                 peak=e["peak"], score=round(e["score"] * gain, 3), features=_clean(feats), wave=_clean(e.get("wave", [])),
                 algo_version=ver, low_conf=e.get("low_conf", False))
             ev.cluster = attach_to_cluster(ev)
-            ev.save(update_fields=["cluster"])
+            ev.guess = guesser.guess_for_event(ev, guess_params)
+            ev.save(update_fields=["cluster", "guess"])
             touched_clusters.add(ev.cluster_id)
             if ev.cluster.segment_id is None and idx is not None:
                 m = idx.snap(ev.lat, ev.lon, hd)

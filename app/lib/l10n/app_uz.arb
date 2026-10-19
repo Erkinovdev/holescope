@@ -248,5 +248,15 @@
   "vcError": "Xato",
   "vcWorking": "Tinglayapman…",
   "optMore": "Boshqa variantlar",
-  "optLess": "Yig‘ish"
+  "optLess": "Yig‘ish",
+  "eventAskTitle": "Bu nima edi?",
+  "eventAgo": "{speed} km/s · {sec} s oldin",
+  "@eventAgo": {"placeholders": {"speed": {"type": "int"}, "sec": {"type": "int"}}},
+  "eventGuessHint": "Ehtimol: {name} · {p}%",
+  "@eventGuessHint": {"placeholders": {"name": {"type": "String"}, "p": {"type": "int"}}},
+  "eventChosen": "Yozildi: {name}",
+  "@eventChosen": {"placeholders": {"name": {"type": "String"}}},
+  "eventViaVoice": "ovoz bilan tanlandi",
+  "eventViaTap": "bosib tanlandi",
+  "eventClose": "Yopish"
 }

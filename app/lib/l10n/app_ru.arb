@@ -272,5 +272,15 @@
   "vcError": "Ошибка",
   "vcWorking": "Слушаю…",
   "optMore": "Другие варианты",
-  "optLess": "Свернуть"
+  "optLess": "Свернуть",
+  "eventAskTitle": "Что это было?",
+  "eventAgo": "{speed} км/ч · {sec} с назад",
+  "@eventAgo": {"placeholders": {"speed": {"type": "int"}, "sec": {"type": "int"}}},
+  "eventGuessHint": "Похоже: {name} · {p}%",
+  "@eventGuessHint": {"placeholders": {"name": {"type": "String"}, "p": {"type": "int"}}},
+  "eventChosen": "Записано: {name}",
+  "@eventChosen": {"placeholders": {"name": {"type": "String"}}},
+  "eventViaVoice": "выбрано голосом",
+  "eventViaTap": "выбрано нажатием",
+  "eventClose": "Закрыть"
 }

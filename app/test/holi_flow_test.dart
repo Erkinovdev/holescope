@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:holescope/algo/event_guess.dart';
+import 'package:holescope/algo/taxonomy_data.dart';
 import 'package:holescope/services/ahead_warner.dart';
 import 'package:holescope/services/announcer.dart';
 import 'package:holescope/services/api_client.dart';
@@ -111,10 +113,12 @@ class FakeAuth extends DeviceAuth {
 const _keys = [
   'listening', 'wake_yes', 'wake_listen', 'mark_pothole', 'mark_deep', 'mark_bump', 'mark_manhole', 'mark_cancel', 'mark_cancel_none', 'thanks', 'ask_confirm',
   'confirm_yes', 'confirm_no', 'no_answer', 'ahead_deep', 'ahead_bump', 'repeat', 'unknown', 'trip_done', 'ahead_pothole_100', 'ahead_pothole_150',
-  'mark_pothole_deep', 'mark_manhole_sunk', 'rate_road_d', 'help', 'ok_end', 'err_mic', 'err_speech', 'err_net', 'mark_not_pothole',
+  'mark_pothole_deep', 'mark_manhole_sunk', 'rate_road_d', 'help', 'ok_end', 'err_mic', 'err_speech', 'err_net', 'mark_not_pothole', 'ask_what', 'thanks_short',
 ];
 
-Map<String, HoliEntry> _phrases() => {for (final k in _keys) k: HoliEntry(key: k, ru: 'ru $k', uz: 'uz $k', file: k)};
+List<String> get _allKeys => [..._keys, for (final k in driverOptionKeys) 'ask_guess_$k'];
+
+Map<String, HoliEntry> _phrases() => {for (final k in _allKeys) k: HoliEntry(key: k, ru: 'ru $k', uz: 'uz $k', file: k)};
 String _ru(String k) => 'assets/holi/audio/${k}_ru.mp3';
 
 void main() {
@@ -129,7 +133,7 @@ void main() {
     fb = FakeFallback();
     session = FakeSession();
     lang = 'ru';
-    voice = HoliVoice(phrases: _phrases(), assets: {for (final k in _keys) _ru(k)}, player: player, session: session, fallback: fb, lang: () => lang);
+    voice = HoliVoice(phrases: _phrases(), assets: {for (final k in _allKeys) _ru(k), 'assets/holi/chime.wav'}, player: player, session: session, fallback: fb, lang: () => lang);
   });
 
   group('HoliVoice', () {
@@ -293,42 +297,146 @@ void main() {
       expect(marks.pending, 0);
     });
 
-    test('вопрос после кандидата: «да» → отметка ямы в точке события', () async {
-      final c = make(['да']);
-      await c.askConfirm(HoliCandidate(at: DateTime(2026, 1, 1, 12), lat: 41.33, lon: 69.23, score: 7));
-      expect(player.played, [_ru('ask_confirm'), _ru('confirm_yes')]);
+    HoliCandidate cand({double score = 3.4, double speed = 50, double dur = 550, double pair = 0.5}) => HoliCandidate(
+          at: DateTime(2026, 1, 1, 12),
+          lat: 41.33,
+          lon: 69.23,
+          score: score,
+          features: EventFeatures(score: score, speedKmh: speed, durMs: dur, pair: pair, gyroPeak: 12, hfShare: 0.2, peak: score),
+        );
+
+    HoliController makeEvent(List<String> answers, {bool speak = true, Duration hold = const Duration(milliseconds: 60)}) {
+      api = FakeApi();
+      marks = MarkService(db: LocalDb.memory(), api: api, auth: FakeAuth(), holdFor: const Duration(milliseconds: 30), now: () => now);
+      return HoliController(voice: voice, speech: FakeSpeech(answers), marks: marks, fixAt: (t) => fix, lang: () => lang, now: () => now, speakEnabled: () => speak, cardHold: hold);
+    }
+
+    test('удар → сигнал, карточка с вариантами, вопрос голосом; ответ названием → выбор виден, «спасибо», отметка с догадкой', () async {
+      final c = makeEvent(['средняя яма']);
+      final seen = <EventPrompt?>[];
+      c.ui.addListener(() => seen.add(c.ui.value.prompt));
+      await c.askEvent(cand());
+      expect(player.played.first, 'assets/holi/chime.wav');
+      expect(player.played, contains(_ru('thanks_short')));
+      final shown = seen.firstWhere((p) => p != null)!;
+      expect(shown.options, contains('handled'));
+      expect(shown.options.length, inInclusiveRange(3, 8));
+      final done = seen.lastWhere((p) => p?.answered == true)!;
+      expect(done.chosen, 'pothole_mid');
+      expect(done.via, 'voice');
       await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(api.sent.single['kind'], 'pothole');
-      expect(api.sent.single['lat'], 41.33);
+      final m = api.sent.single;
+      expect(m['kind'], 'pothole_mid');
+      expect(m['lat'], 41.33);
+      expect((m['guess'] as Map)['top'], isNotEmpty);
+      expect((m['guess'] as Map)['via'], 'voice');
     });
 
-    test('вопрос после кандидата: «нет» → отметка «не яма»', () async {
-      final c = make(['нет']);
-      await c.askConfirm(HoliCandidate(at: DateTime(2026, 1, 1, 12), lat: 41.33, lon: 69.23));
-      expect(player.played.last, _ru('confirm_no'));
+    test('уверенная догадка: Холи переспрашивает «Похоже, …. Верно?» и «да» принимает её', () async {
+      final c = makeEvent(['да']);
+      final cd = cand(score: 9.0);
+      final g = guessEvent(cd.features!);
+      expect(g.confidence, greaterThanOrEqualTo(0.5), reason: 'для проверки нужен удар, по которому модель уверена');
+      await c.askEvent(cd);
+      expect(player.played, contains(_ru('ask_guess_${g.top}')));
       await Future<void>.delayed(const Duration(milliseconds: 100));
-      expect(api.sent.single['kind'], 'not_pothole');
+      expect(api.sent.single['kind'], g.top);
     });
 
-    test('вопрос: тишина → «не услышала», отметок нет', () async {
-      final c = make(['']);
-      await c.askConfirm(HoliCandidate(at: DateTime(2026, 1, 1, 12), lat: 41.33, lon: 69.23));
-      expect(player.played.last, _ru('no_answer'));
+    test('«нет» на догадку → спрашивает «Что это было?» и принимает названный вариант', () async {
+      final c = makeEvent(['нет', 'глубокая яма']);
+      await c.askEvent(cand(score: 9.0));
+      expect(player.played, contains(_ru('ask_what')));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.single['kind'], 'pothole_deep');
+    });
+
+    test('«яма» без уточнения → уровень по догадке; «это не яма» → «ничего»', () async {
+      var c = makeEvent(['яма']);
+      await c.askEvent(cand(score: 6.5));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.single['kind'], startsWith('pothole_'));
+      c = makeEvent(['это не яма']);
+      await c.askEvent(cand(score: 3.4));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.single['kind'], 'noise');
+    });
+
+    test('«ложное» и «ничего» — отдельные варианты', () async {
+      var c = makeEvent(['ложное']);
+      await c.askEvent(cand());
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.single['kind'], 'handled');
+      now = now.add(const Duration(minutes: 1));
+      c = makeEvent(['ничего']);
+      await c.askEvent(cand());
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.sent.single['kind'], 'noise');
+    });
+
+    test('нажатие на вариант на экране во время прослушивания: выбор, «спасибо», микрофон выключен', () async {
+      final sp = _BlockingSpeech();
+      api = FakeApi();
+      marks = MarkService(db: LocalDb.memory(), api: api, auth: FakeAuth(), holdFor: const Duration(milliseconds: 30), now: () => now);
+      final c = HoliController(voice: voice, speech: sp, marks: marks, fixAt: (t) => fix, lang: () => lang, now: () => now, cardHold: const Duration(milliseconds: 60));
+      final run = c.askEvent(cand());
+      for (var i = 0; i < 200 && c.ui.value.status != HoliStatus.listening; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(c.ui.value.status, HoliStatus.listening);
+      await c.selectOption('manhole');
+      await run;
+      expect(c.ui.value.prompt?.chosen, 'manhole');
+      expect(c.ui.value.prompt?.via, 'tap');
+      expect(sp.stops, greaterThan(0));
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(api.sent.single['kind'], 'manhole');
+      expect((api.sent.single['guess'] as Map)['via'], 'tap');
+    });
+
+    test('тишина: ничего не сохраняется, карточка остаётся для нажатия и потом исчезает', () async {
+      final c = makeEvent(['', '']);
+      await c.askEvent(cand());
+      expect(c.ui.value.prompt, isNotNull);
+      expect(c.ui.value.prompt!.answered, isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(c.ui.value.prompt, isNull);
       expect(marks.pending, 0);
     });
 
-    test('вопросы не чаще раза в минуту и не больше трёх за поездку', () async {
-      final c = make(['да', 'да', 'да', 'да', 'да']);
-      final cand = HoliCandidate(at: DateTime(2026, 1, 1, 12), lat: 41.33, lon: 69.23);
-      await c.askConfirm(cand);
+    test('«не знаю» закрывает вопрос без отметки', () async {
+      final c = makeEvent(['не знаю']);
+      await c.askEvent(cand());
+      expect(c.ui.value.prompt?.dismissed, isTrue);
+      expect(marks.pending, 0);
+    });
+
+    test('слабый удар: глубокой ямы среди вариантов нет; сильный: мелкой нет', () async {
+      var c = makeEvent(['']);
+      await c.askEvent(cand(score: 1.9));
+      expect(c.ui.value.prompt!.options, isNot(contains('pothole_deep')));
+      now = now.add(const Duration(minutes: 1));
+      c = makeEvent(['']);
+      await c.askEvent(cand(score: 9));
+      expect(c.ui.value.prompt!.options, isNot(contains('pothole_light')));
+      expect(c.ui.value.prompt!.options, contains('pothole_deep'));
+    });
+
+    test('голос выключен: вопрос на экране без звука, выбор нажатием работает', () async {
+      final c = makeEvent([], speak: false);
+      await c.askEvent(cand());
+      expect(player.played, isEmpty);
+      expect(c.ui.value.prompt, isNotNull);
+      await c.selectOption('pothole_mid');
+      expect(c.ui.value.prompt?.chosen, 'pothole_mid');
+    });
+
+    test('вопросы не чаще раза в 25 секунд и не больше двадцати за поездку', () async {
+      final c = makeEvent(['', '', '', '']);
+      await c.askEvent(cand());
       expect(c.canAsk(), isFalse, reason: 'прошло 0 секунд');
-      now = now.add(const Duration(seconds: 61));
+      now = now.add(const Duration(seconds: 26));
       expect(c.canAsk(), isTrue);
-      await c.askConfirm(cand);
-      now = now.add(const Duration(seconds: 61));
-      await c.askConfirm(cand);
-      now = now.add(const Duration(seconds: 61));
-      expect(c.canAsk(), isFalse, reason: 'лимит 3 за поездку');
       c.resetTrip();
       expect(c.canAsk(), isTrue);
     });

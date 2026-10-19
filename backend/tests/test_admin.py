@@ -268,7 +268,9 @@ def test_params_versions_and_public_distribution(staff, db):
     assert c.put(f"{A}/brain/params/save", json.dumps({"params": {"floor": 3.0}}), content_type=J, headers=tok["labeler"]).status_code == 403
     r = c.put(f"{A}/brain/params/save", json.dumps({"params": {"floor": 3.0, "k_noise": 5}, "activate": True, "notes": "тест"}), content_type=J, headers=ad)
     assert r.status_code == 201 and r.json()["active"] is True and r.json()["version"] == "rules-1"
-    assert c.get("/api/v1/algo/params").json() == {"version": "rules-1", "params": {**p["defaults"], "floor": 3.0, "k_noise": 5.0}}
+    got = c.get("/api/v1/algo/params").json()
+    got.pop("guess")  # параметры догадки проверяются в test_guesser
+    assert got == {"version": "rules-1", "params": {**p["defaults"], "floor": 3.0, "k_noise": 5.0}}
     # вторая версия не включена по умолчанию; переключение и откат
     r2 = c.put(f"{A}/brain/params/save", json.dumps({"params": {"floor": 2.5}}), content_type=J, headers=ad).json()
     assert r2["active"] is False and AlgoVersion.objects.filter(active=True).count() == 1

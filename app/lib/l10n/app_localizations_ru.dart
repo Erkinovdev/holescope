@@ -841,4 +841,31 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get optLess => 'Свернуть';
+
+  @override
+  String get eventAskTitle => 'Что это было?';
+
+  @override
+  String eventAgo(int speed, int sec) {
+    return '$speed км/ч · $sec с назад';
+  }
+
+  @override
+  String eventGuessHint(String name, int p) {
+    return 'Похоже: $name · $p%';
+  }
+
+  @override
+  String eventChosen(String name) {
+    return 'Записано: $name';
+  }
+
+  @override
+  String get eventViaVoice => 'выбрано голосом';
+
+  @override
+  String get eventViaTap => 'выбрано нажатием';
+
+  @override
+  String get eventClose => 'Закрыть';
 }

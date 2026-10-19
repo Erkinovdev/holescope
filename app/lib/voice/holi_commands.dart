@@ -1,7 +1,7 @@
 import 'holi_lexicon.dart' as lex;
 
 /// Что понял Холи: отметка объекта, оценка дороги или управление диалогом.
-enum VoiceCommand { mark, rating, cancel, yes, no, stop, help }
+enum VoiceCommand { mark, rating, cancel, yes, no, stop, skip, help }
 
 class ParsedVoice {
   const ParsedVoice({this.wake = false, this.command, this.key});

@@ -1,3 +1,4 @@
+import json
 import math, tempfile
 from datetime import timedelta
 from django.conf import settings
@@ -9,7 +10,7 @@ from django.views.decorators.http import require_http_methods
 from fleet.models import Device, Vehicle, CarModel
 from telemetry.models import Trip, RoadEvent, EventCluster, RawUpload
 from brain.models import Question, Label, BrainSnapshot, AlgoVersion
-from brain import services, road_stats, taxonomy, validation
+from brain import guesser, services, road_stats, taxonomy, validation
 from .auth import device_required, body
 
 NICK_A = ["Тихий", "Быстрый", "Ночной", "Ясный", "Смелый", "Зоркий"]
@@ -89,10 +90,16 @@ def upload_raw(request):
 @device_required
 def questions_next(request):
     qs = Question.objects.filter(device=request.device, status="open").select_related("event").order_by("-priority")[:5]
-    return JsonResponse({"questions": [dict(
-        id=q.pk, lat=q.event.lat, lon=q.event.lon, speed_kmh=q.event.speed_kmh, at=q.event.at.isoformat(),
-        wave=q.event.wave, guess=q.event.type, guess_level=q.event.level,
-        options=taxonomy.driver_options()) for q in qs]})
+    out = []
+    for q in qs:
+        e = q.event
+        g = e.guess or {}
+        keys = taxonomy.driver_option_keys()
+        out.append(dict(id=q.pk, lat=e.lat, lon=e.lon, speed_kmh=e.speed_kmh, at=e.at.isoformat(), wave=e.wave, guess=g.get("top") or e.type, guess_level=e.level,
+                        guess_p=round(float((g.get("probs") or {}).get(g.get("top"), 0.0)), 3) if g else None,
+                        options=guesser.options_for(guesser.Guess(probs=g["probs"], top=g["top"]), keys, limit=8) + ["not_sure"] if g.get("probs") else taxonomy.driver_options(),
+                        all_options=taxonomy.driver_options(), probs=(g.get("probs") or {})))
+    return JsonResponse({"questions": out})
 
 
 @csrf_exempt
@@ -178,13 +185,15 @@ def marks_create(request):
             at = parse_datetime(str(it["at"]))
             hd = it.get("heading")
             hd = float(hd) if hd is not None else None
+            gs = it.get("guess") if isinstance(it.get("guess"), dict) else {}
+            gs = gs if len(json.dumps(gs)) < 1500 else {}
         except (KeyError, TypeError, ValueError):
             return JsonResponse({"error": "bad mark"}, status=400)
         if kind not in MARK_KINDS or at is None or not (36 <= lat <= 46 and 55 <= lon <= 80):
             return JsonResponse({"error": "bad mark"}, status=400)
         if made >= left:
             return JsonResponse({"error": "too many marks today"}, status=429)
-        m, new = DriverMark.objects.get_or_create(device=dev, client_id=cid, defaults=dict(kind=kind, lat=lat, lon=lon, heading=hd, at=at))
+        m, new = DriverMark.objects.get_or_create(device=dev, client_id=cid, defaults=dict(kind=kind, lat=lat, lon=lon, heading=hd, at=at, guess=gs))
         if new:
             made += 1
             apply_mark(m)

@@ -1585,6 +1585,48 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Свернуть'**
   String get optLess;
+
+  /// No description provided for @eventAskTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что это было?'**
+  String get eventAskTitle;
+
+  /// No description provided for @eventAgo.
+  ///
+  /// In ru, this message translates to:
+  /// **'{speed} км/ч · {sec} с назад'**
+  String eventAgo(int speed, int sec);
+
+  /// No description provided for @eventGuessHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Похоже: {name} · {p}%'**
+  String eventGuessHint(String name, int p);
+
+  /// No description provided for @eventChosen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записано: {name}'**
+  String eventChosen(String name);
+
+  /// No description provided for @eventViaVoice.
+  ///
+  /// In ru, this message translates to:
+  /// **'выбрано голосом'**
+  String get eventViaVoice;
+
+  /// No description provided for @eventViaTap.
+  ///
+  /// In ru, this message translates to:
+  /// **'выбрано нажатием'**
+  String get eventViaTap;
+
+  /// No description provided for @eventClose.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть'**
+  String get eventClose;
 }
 
 class _AppLocalizationsDelegate

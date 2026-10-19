@@ -48,8 +48,8 @@ ITEMS: list[Item] = [
     # ── не дорога
     Item("curb", "other", "Бордюр / съезд", "Bordyur / tushish joyi", road=False, hint_ru="Заезд на бордюр или в карман"),
     Item("braking", "other", "Резкое торможение / разгон", "Keskin tormozlash / tezlashish", road=False, driver=False, hint_ru="Продольный толчок без вертикального удара"),
-    Item("handled", "other", "Телефон трогали / упал", "Telefonga tegildi / tushib ketdi", road=False, hint_ru="Одиночный сильный пик с поворотом телефона"),
-    Item("noise", "other", "Ничего особенного", "Alohida narsa yo‘q", road=False, hint_ru="Шум дороги или двигателя"),
+    Item("handled", "other", "Ложное срабатывание", "Yolg‘on signal", road=False, hint_ru="Телефон задели или он упал: одиночный сильный пик с поворотом телефона"),
+    Item("noise", "other", "Ничего", "Hech narsa", road=False, hint_ru="Шум дороги или двигателя, неровности нет"),
 ]
 
 BY_KEY = {i.key: i for i in ITEMS}
@@ -104,6 +104,11 @@ def driver_options() -> list[str]:
     main = ["pothole_light", "pothole_mid", "pothole_deep", "bump", "manhole", "rail_tram"]
     rest = [i.key for i in ITEMS if i.driver and i.key not in main and i.key not in ("noise",)]
     return main + rest + ["noise", "not_sure"]
+
+
+def driver_option_keys() -> list[str]:
+    """Все ключи, которые можно предложить водителю (без «не знаю»)."""
+    return [i.key for i in ITEMS if i.driver or i.key in ("handled", "noise")]
 
 
 def as_json() -> dict:

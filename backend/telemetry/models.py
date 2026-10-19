@@ -87,6 +87,7 @@ class RoadEvent(models.Model):
     features = models.JSONField(default=dict)                       # весь вектор признаков (для переобучения)
     wave = models.JSONField(default=list, blank=True)               # форма сигнала ±2 с (для вопросов и разбора)
     algo_version = models.CharField(max_length=12)
+    guess = models.JSONField(default=dict, blank=True)              # догадка сервера на момент приёма: {v, top, probs{ключ: вероятность}, reasons}
     low_conf = models.BooleanField(default=False)
     user_label = models.CharField(max_length=20, blank=True)        # ответ водителя
     created = models.DateTimeField(auto_now_add=True)
@@ -161,6 +162,7 @@ class DriverMark(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     applied = models.BooleanField(default=False)
     ri = models.FloatField(null=True, blank=True)                   # для оценки дороги: медианный индекс ровности участка, который только что проехали
+    guess = models.JSONField(default=dict, blank=True)              # догадка модели на телефоне в момент вопроса: {top, p, v, top3{}, via: voice|tap}
     event = models.ForeignKey(RoadEvent, null=True, blank=True, on_delete=models.SET_NULL, related_name="marks")
     cluster = models.ForeignKey(EventCluster, null=True, blank=True, on_delete=models.SET_NULL, related_name="marks")
 

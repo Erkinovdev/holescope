@@ -37,6 +37,14 @@ class RecorderSnapshot {
   final FinishedTrip? lastTrip;
 }
 
+/// Свежий удар для вопроса «что это было?».
+class LiveCandidate {
+  const LiveCandidate({required this.epochMs, required this.event});
+  final double epochMs;
+  final RoadEventData event;
+  DateTime get at => DateTime.fromMillisecondsSinceEpoch(epochMs.round());
+}
+
 class FinishedTrip {
   const FinishedTrip({required this.localId, required this.distanceKm, required this.potholes, required this.startedAt, required this.endedAt, required this.reason, required this.uploaded});
   final int localId, potholes;
@@ -52,13 +60,19 @@ class RecorderConfig {
     this.armSpeedKmh = 10.0,
     this.disarmSpeedKmh = 6.0,
     this.disarmAfterS = 60.0,
-    this.liveEveryS = 90.0,
-    this.liveWindowS = 600.0,
+    this.liveEveryS = 6.0,
+    this.liveWindowS = 75.0,
+    this.promptMinScore = 3.0,
+    this.promptMinSpeedKmh = 12.0,
+    this.liveSettleMs = 1500,
+    this.promptMaxAgeMs = 12000,
     this.minUploadDistanceKm = 0.3,
     this.privacyTrimM = 200.0,
     this.runInIsolate = true,
   });
-  final double armSpeedKmh, disarmSpeedKmh, disarmAfterS, liveEveryS, liveWindowS, minUploadDistanceKm, privacyTrimM;
+  final double armSpeedKmh, disarmSpeedKmh, disarmAfterS, liveEveryS, liveWindowS, minUploadDistanceKm, privacyTrimM, promptMinScore, promptMinSpeedKmh;
+  final int liveSettleMs; // удар считается завершённым, когда после него прошло столько мс (иначе хвост ещё не записан)
+  final int promptMaxAgeMs; // спрашивать только про удары не старше этого возраста
   final bool runInIsolate;
 }
 
@@ -92,9 +106,9 @@ class TripRecorder {
   final void Function(RecorderSnapshot)? onSnapshot;
   final void Function(FinishedTrip)? onTripQueued;
 
-  /// Свежий удар, похожий на яму: по нему Холи может спросить «да/нет». Событие уже в прошлом на секунды.
-  final void Function(double epochMs, double lat, double lon, double? heading, double score)? onCandidate;
-  double _lastCandidateMs = 0;
+  /// Свежий заметный удар (с полным набором признаков): по нему Холи сразу спрашивает «что это было?». Событие в прошлом не более чем на несколько секунд.
+  final void Function(LiveCandidate)? onCandidate;
+  final _seenMs = <double>[]; // эпохи уже посчитанных ударов (повторное обнаружение в соседнем окне не считаем)
 
   final TripDetector _det = TripDetector();
   TripBuffer _buf = TripBuffer();
@@ -111,6 +125,9 @@ class TripRecorder {
   double? _heading, _lat, _lon;
 
   RecorderPhase get phase => _phase;
+
+  /// Время последнего GPS-отсчёта (мс, epoch): «сейчас» для расчёта возраста событий.
+  int? get lastFixMs => _lastFix?.tMs;
   RecorderSnapshot get snapshot => RecorderSnapshot(
         phase: _phase,
         speedKmh: _speedKmh,
@@ -242,6 +259,7 @@ class TripRecorder {
     _t0Ms = null;
     _distanceM = 0;
     _found = 0;
+    _seenMs.clear();
     _skipThisTrip = false;
     control.setMotionSampling(true);
     control.setGpsActive(true);
@@ -255,6 +273,7 @@ class TripRecorder {
     _armedAt = _slowSince = null;
     _distanceM = 0;
     _found = 0;
+    _seenMs.clear();
     _det.phase = TripPhase.idle;
     if (_phase != RecorderPhase.off) _phase = RecorderPhase.idle;
   }
@@ -303,6 +322,7 @@ class TripRecorder {
     _t0Ms = null;
     _distanceM = 0;
     _found = 0;
+    _seenMs.clear();
     _phase = RecorderPhase.idle;
     control.setMotionSampling(false);
     control.setGpsActive(false);
@@ -382,7 +402,8 @@ class TripRecorder {
     return stops / km;
   }
 
-  // «живой» счётчик ям: периодически прогоняем алгоритм по хвосту записи
+  // «живое» обнаружение: каждые liveEveryS секунд прогоняем алгоритм по хвосту записи (liveWindowS секунд).
+  // Новые завершившиеся удары считаем один раз и сразу сообщаем о заметных — чтобы спросить водителя, пока он помнит.
   void _maybeLive(double t) {
     if (_liveBusy || t - _lastLiveAt < config.liveEveryS || _buf.motionCount < 600) return;
     _lastLiveAt = t;
@@ -394,27 +415,29 @@ class TripRecorder {
     final params = AlgoParams.current.copyWith(wheelbaseM: _ctx().wheelbaseM);
     Future<TripResult> job() => config.runInIsolate ? Isolate.run(() => processTrip(sens, gps, params)) : Future.value(processTrip(sens, gps, params));
     job().then((r) {
-      _found = r.events.where((e) => e.type == 'pothole').length;
+      _applyLive(r, from, nowMs);
       _emit();
-      _offerCandidate(r, from, nowMs);
     }).catchError((_) {}).whenComplete(() => _liveBusy = false);
   }
 
-  /// Самое сильное свежее событие (не старше 25 с, не слабое, не на малой скорости, не уже предложенное) → onCandidate.
-  void _offerCandidate(TripResult r, double fromMs, double nowMs) {
-    final cb = onCandidate;
-    if (cb == null) return;
-    RoadEventData? best;
+  /// Новые удары из очередного окна: дедупликация по времени, счётчик, кандидат на вопрос (самый сильный).
+  void _applyLive(TripResult r, double fromMs, double nowMs) {
+    final fresh = <(RoadEventData, double)>[];
     for (final e in r.events) {
-      if (e.type != 'pothole' || e.lowConf || e.score < 5 || e.speedKmh < 15) continue;
+      if (e.type != 'pothole') continue;
       final at = fromMs + e.t * 1000;
-      if (nowMs - at > 25000 || at <= _lastCandidateMs + 5000) continue;
-      if (best == null || e.score > best.score) best = e;
+      if (nowMs - at < config.liveSettleMs) continue; // хвост удара ещё не записан — оценим на следующем проходе
+      if (_seenMs.any((s) => (s - at).abs() < 2500)) continue;
+      _seenMs.add(at);
+      _found++;
+      if (!e.lowConf && e.score >= config.promptMinScore && e.speedKmh >= config.promptMinSpeedKmh && nowMs - at <= config.promptMaxAgeMs) fresh.add((e, at));
     }
-    if (best == null) return;
-    final at = fromMs + best.t * 1000;
-    _lastCandidateMs = at;
-    cb(at, best.lat, best.lon, best.heading.isNaN ? null : best.heading, best.score);
+    if (_seenMs.length > 400) _seenMs.removeRange(0, _seenMs.length - 300);
+    final cb = onCandidate;
+    if (cb == null || fresh.isEmpty) return;
+    fresh.sort((a, b) => b.$1.score.compareTo(a.$1.score));
+    final (e, at) = fresh.first;
+    cb(LiveCandidate(epochMs: at, event: e));
   }
 
   String _encode(Map<String, dynamic> m) => jsonEncode(sanitizeJson(m));
