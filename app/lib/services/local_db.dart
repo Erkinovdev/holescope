@@ -30,11 +30,11 @@ class LocalTrip {
 
 /// Кэш ям вокруг пользователя (для офлайн-предупреждений).
 class CachedCluster {
-  const CachedCluster({required this.id, required this.lat, required this.lon, required this.heading, required this.type, required this.level, required this.status, required this.confidence, required this.safeSpeed});
+  const CachedCluster({required this.id, required this.lat, required this.lon, required this.heading, required this.type, required this.level, required this.status, required this.confidence, required this.safeSpeed, this.span = '', this.side = '', this.advice = ''});
   final int id;
   final double lat, lon, confidence;
   final double? heading;
-  final String type, status;
+  final String type, status, span, side, advice;
   final String? level;
   final int? safeSpeed;
 }
@@ -67,7 +67,7 @@ class LocalDb {
 
   final CommonDatabase _db;
 
-  static const _schemaVersion = 2;
+  static const _schemaVersion = 3;
 
   void _migrate() {
     final v = _db.select('PRAGMA user_version').first.values.first as int;
@@ -92,6 +92,15 @@ class LocalDb {
         CREATE INDEX notes_at ON notes(at);
         CREATE TABLE pending(id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL,
           heading REAL, peak REAL NOT NULL DEFAULT 0, speed_kmh REAL NOT NULL DEFAULT 0, guess TEXT NOT NULL DEFAULT '', wave TEXT NOT NULL DEFAULT '[]');
+        PRAGMA user_version = 2;
+      ''');
+    }
+    if (v < 3) {
+      // сторона и «можно ли объехать» для элементов: span/side/advice с сервера
+      _db.execute('''
+        ALTER TABLE clusters ADD COLUMN span TEXT NOT NULL DEFAULT '';
+        ALTER TABLE clusters ADD COLUMN side TEXT NOT NULL DEFAULT '';
+        ALTER TABLE clusters ADD COLUMN advice TEXT NOT NULL DEFAULT '';
         PRAGMA user_version = $_schemaVersion;
       ''');
     }
@@ -205,9 +214,9 @@ class LocalDb {
     _db.execute('BEGIN');
     try {
       if (clear) _db.execute('DELETE FROM clusters');
-      final st = _db.prepare('INSERT OR REPLACE INTO clusters(id,lat,lon,heading,type,level,status,confidence,safe_speed,fetched_at) VALUES(?,?,?,?,?,?,?,?,?,?)');
+      final st = _db.prepare('INSERT OR REPLACE INTO clusters(id,lat,lon,heading,type,level,status,confidence,safe_speed,fetched_at,span,side,advice) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)');
       for (final c in list) {
-        st.execute([c.id, c.lat, c.lon, c.heading, c.type, c.level, c.status, c.confidence, c.safeSpeed, t]);
+        st.execute([c.id, c.lat, c.lon, c.heading, c.type, c.level, c.status, c.confidence, c.safeSpeed, t, c.span, c.side, c.advice]);
       }
       st.dispose();
       _db.execute('COMMIT');
@@ -232,6 +241,9 @@ class LocalDb {
           status: r['status'] as String,
           confidence: (r['confidence'] as num).toDouble(),
           safeSpeed: r['safe_speed'] as int?,
+          span: r['span'] as String,
+          side: r['side'] as String,
+          advice: r['advice'] as String,
         )
     ];
   }

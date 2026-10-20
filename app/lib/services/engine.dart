@@ -171,7 +171,7 @@ class RecorderEngine {
       if (p.along <= 5) {
         warning.value = null;
       } else {
-        warning.value = AheadItem(id: cur.id, distanceM: p.along.round(), side: cur.side, level: cur.level, safeSpeed: cur.safeSpeed, type: cur.type, lat: cur.lat, lon: cur.lon);
+        warning.value = AheadItem(id: cur.id, distanceM: p.along.round(), side: cur.side, level: cur.level, safeSpeed: cur.safeSpeed, type: cur.type, lat: cur.lat, lon: cur.lon, span: cur.span, advice: cur.advice);
       }
     }
     final item = warner.check(f.lat, f.lon, hd, speedKmh: speedKmh);

@@ -31,13 +31,14 @@ class AheadWarning {
 }
 
 class ClusterDto {
-  ClusterDto({required this.id, required this.lat, required this.lon, required this.type, required this.level, required this.status, required this.passes, required this.devices, required this.confidence, required this.safeSpeed, this.heading});
+  ClusterDto({required this.id, required this.lat, required this.lon, required this.type, required this.level, required this.status, required this.passes, required this.devices, required this.confidence, required this.safeSpeed, this.heading, this.span = '', this.side = '', this.advice = ''});
   final int id, passes, devices;
   final double lat, lon, confidence;
   final double? heading;
   final String type, status;
   final String? level;
   final int? safeSpeed;
+  final String span, side, advice; // span: lane|full|stretch; side: left|right|center|all|unknown; advice: avoid|slow
 
   factory ClusterDto.fromJson(Map<String, dynamic> j) => ClusterDto(
         id: j['id'] as int,
@@ -51,6 +52,9 @@ class ClusterDto {
         devices: j['devices'] as int,
         confidence: (j['confidence'] as num).toDouble(),
         safeSpeed: (j['safe_speed'] as num?)?.toInt(),
+        span: (j['span'] as String?) ?? '',
+        side: (j['side'] as String?) ?? '',
+        advice: (j['advice'] as String?) ?? '',
       );
 }
 

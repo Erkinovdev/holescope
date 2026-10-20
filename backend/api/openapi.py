@@ -70,6 +70,8 @@ ADMIN = [
     ("/admin/audit", "get", "Журнал действий", "admin", None),
     ("/admin/brain/summary", "get", "Сводка «Мозга»", "analyst", None),
     ("/admin/brain/evolution", "get", "Эволюция модели: точность догадки на отложенных поездках, динамика, разбивки, матрица ошибок, версии", "analyst", None),
+    ("/admin/brain/models", "get", "Модели ИИ с именами (Сезги, Назар, Мезон, Хотира, Устоз, Холи): состояние, версии, метрики, активность", "analyst", None),
+    ("/admin/brain/experiments", "get", "Эксперименты на разметке: цена чувствительности, кривая обучения, сторона/полоса элементов", "analyst", None),
     ("/admin/badges", "get", "Числа для значков в меню админки (события, жалобы, вопросы)", "analyst", None),
     ("/admin/challenges", "get", "Челленджи с прогрессом по реальным данным", "analyst", None),
     ("/admin/challenges/create", "post", "Создать челлендж", "admin", "title, kind, target, district, starts, ends, reward"),

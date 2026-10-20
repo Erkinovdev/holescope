@@ -7,10 +7,10 @@ import 'local_db.dart';
 
 /// Яма впереди по ходу движения.
 class AheadItem {
-  const AheadItem({required this.id, required this.distanceM, required this.side, required this.level, required this.safeSpeed, required this.type, required this.lat, required this.lon});
+  const AheadItem({required this.id, required this.distanceM, required this.side, required this.level, required this.safeSpeed, required this.type, required this.lat, required this.lon, this.span = '', this.advice = ''});
   final int id, distanceM;
   final double lat, lon;
-  final String side, type;
+  final String side, type, span, advice; // span: lane|full; advice: avoid (можно объехать) | slow (только сбросить скорость)
   final String? level;
   final int? safeSpeed;
 }
@@ -79,7 +79,7 @@ class AheadWarner {
       if (p.along <= cfg.minAlongM || p.along > warnM || p.across.abs() > cfg.corridorM) continue;
       if (_warned.contains(c.id)) continue;
       if (best == null || p.along < best.distanceM) {
-        best = AheadItem(id: c.id, distanceM: p.along.round(), side: p.across > 6 ? 'right' : (p.across < -6 ? 'left' : 'center'), level: c.level, safeSpeed: c.safeSpeed, type: c.type, lat: c.lat, lon: c.lon);
+        best = AheadItem(id: c.id, distanceM: p.along.round(), side: (c.side == 'left' || c.side == 'right') ? c.side : (p.across > 6 ? 'right' : (p.across < -6 ? 'left' : 'center')), level: c.level, safeSpeed: c.safeSpeed, type: c.type, lat: c.lat, lon: c.lon, span: c.span, advice: c.advice);
       }
     }
     if (best != null && markWarned) {
@@ -105,7 +105,7 @@ class AheadWarner {
       final before = db.clusterStatuses();
       final fresh = [
         for (final c in list)
-          CachedCluster(id: c.id, lat: c.lat, lon: c.lon, heading: c.heading, type: c.type, level: c.level, status: c.status, confidence: c.confidence, safeSpeed: c.safeSpeed)
+          CachedCluster(id: c.id, lat: c.lat, lon: c.lon, heading: c.heading, type: c.type, level: c.level, status: c.status, confidence: c.confidence, safeSpeed: c.safeSpeed, span: c.span, side: c.side, advice: c.advice)
       ];
       db.replaceClusters(fresh, clear: true, now: now);
       for (final c in fresh) {

@@ -376,6 +376,8 @@ def test_calm_sensitivity_command(db):
 
 
 def test_admin_adds_element_with_side(staff, db):
+    from roadnet.matching import reset_index
+    reset_index()                                    # индекс дорог мог остаться от соседних тестов
     c, tk = staff
     h = tk["labeler"]
     r = c.post(f"{A}/clusters/create", json.dumps({"lat": 41.3, "lon": 69.25, "type": "pothole", "level": "deep", "side": "right"}), content_type=J, headers=h)

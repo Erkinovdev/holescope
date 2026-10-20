@@ -106,6 +106,14 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
   }
 }
 
+/// Что делать водителю: элемент на всю ширину — только сбросить скорость; на одной стороне — можно объехать.
+String adviceText(BuildContext context, AheadItem w) {
+  final side = switch (w.side) { 'left' => context.tr('слева', 'chapda'), 'right' => context.tr('справа', 'oʻngda'), _ => '' };
+  if (w.span == 'full') return context.tr('На всю ширину — перестроиться бесполезно, сбросьте скорость', 'Butun kenglikda — qayta qurish foydasiz, tezlikni kamaytiring');
+  if (w.advice == 'avoid' && side.isNotEmpty) return context.tr('Можно объехать: яма $side', 'Aylanib oʻtish mumkin: choʻqqi $side');
+  return context.tr('Сбросьте скорость', 'Tezlikni kamaytiring');
+}
+
 // ───────────────────────── Поездка (Drive) ─────────────────────────
 class DriveScreen extends ConsumerStatefulWidget {
   const DriveScreen({super.key});
@@ -163,6 +171,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
                         Text('$warnTitle ${context.tr('через', 'dan keyin')} ${warn.distanceM} ${l.metersWord}', style: HpText.s(c.text, 19, FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
                         Text('$level${side.isEmpty ? '' : ' · $side'}${warn.safeSpeed != null ? ' · ${context.tr('до', 'gacha')} ${warn.safeSpeed} ${l.kmh}' : ''}', style: HpText.s(c.muted, 14, FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(adviceText(context, warn), style: HpText.s(c.amberText, 12, FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
                       ])),
                       Column(mainAxisSize: MainAxisSize.min, children: [Text('${warn.distanceM}', style: HpText.s(c.crater, 34, FontWeight.w800, h: 1)), Text(l.metersWord, style: HpText.s(c.muted, 12, FontWeight.w600))]),
                     ]),
@@ -313,6 +322,7 @@ class WarningScreen extends ConsumerWidget {
             ),
             Text(l.warnSlowDown, style: HpText.s(c.text, 28, FontWeight.w700, ls: -0.42)),
             Text(item.safeSpeed != null ? '${l.warnSideLine(level, side)} · ${item.safeSpeed} ${l.kmh}' : l.warnSideLine(level, side), style: HpText.s(c.muted, 16, FontWeight.w400)),
+            if (item.span.isNotEmpty || item.advice.isNotEmpty) Text(adviceText(context, item), textAlign: TextAlign.center, style: HpText.s(c.amberText, 14, FontWeight.w700)),
             if (isDemo) const DemoBanner(),
           ]),
         ),
