@@ -69,6 +69,8 @@ workflows:
       - name: Подпись (сертификат и профиль через App Store Connect API)
         script: |
           keychain initialize
+          ssh-keygen -t rsa -b 2048 -m PEM -f $HOME/cert_key -q -N ""
+          export CERTIFICATE_PRIVATE_KEY="$(cat $HOME/cert_key)"
           app-store-connect fetch-signing-files "uz.holescope.holescope.PTMARNJ497" --type IOS_APP_STORE --create
           keychain add-certificates
           xcode-project use-profiles
