@@ -1,10 +1,22 @@
 import { useState } from 'react'
 import ClusterPanel from '../components/ClusterPanel'
 import MapView, { type ClusterKind, type MapLayers } from '../components/MapView'
-import { Button, Card, Chip, Field, Input, PageHeader, cx } from '../components/ui'
+import { Button, Card, Chip, Field, Input, Modal, PageHeader, Select, cx, useToast } from '../components/ui'
 import { api } from '../lib/api'
 import { ROUGH_COLORS, STATUS_NAMES } from '../lib/format'
 import { useGet } from '../lib/hooks'
+import { useAuth } from '../lib/auth'
+
+const ELEMENT_KINDS: { key: string; label: string; type: string; level: string }[] = [
+  { key: 'deep', label: 'Глубокая яма', type: 'pothole', level: 'deep' },
+  { key: 'danger', label: 'Опасная яма', type: 'pothole', level: 'danger' },
+  { key: 'bump', label: 'Лежачий полицейский', type: 'bump', level: 'mid' },
+  { key: 'manhole_raised', label: 'Люк выступает над дорогой', type: 'manhole', level: 'mid' },
+  { key: 'manhole_sunk', label: 'Люк просел под дорогой', type: 'manhole', level: 'mid' },
+  { key: 'rail_tram', label: 'Трамвайные рельсы', type: 'rail_tram', level: 'mid' },
+  { key: 'rail_train', label: 'Ж/д переезд', type: 'rail_train', level: 'mid' },
+]
+const SIDES = [['left', 'Слева'], ['center', 'По центру'], ['right', 'Справа'], ['all', 'На всю ширину']] as const
 
 interface Hit { type: string; code: string; name: string; lat: number; lon: number }
 const STATUSES = ['candidate', 'confirmed', 'complaint', 'fixed']
@@ -19,6 +31,25 @@ export default function MapPage() {
   const [hits, setHits] = useState<Hit[]>([])
   const [msg, setMsg] = useState('')
   const stats = useGet<{ items: { id: number }[]; total: number }>('/admin/clusters', { size: 1 })
+  const { can } = useAuth()
+  const toast = useToast()
+  const [adding, setAdding] = useState(false)
+  const [picked, setPicked] = useState<{ lon: number; lat: number } | null>(null)
+  const [form, setForm] = useState({ kind: 'deep', side: 'all', heading: '' })
+  const [saving, setSaving] = useState(false)
+  const [reload, setReload] = useState(0)
+
+  async function addElement() {
+    if (!picked) return
+    const k = ELEMENT_KINDS.find((x) => x.key === form.kind)!
+    setSaving(true)
+    try {
+      const hd = form.heading.trim() === '' ? undefined : Number(form.heading)
+      const c = await api.post<{ id: number }>('/admin/clusters/create', { lat: picked.lat, lon: picked.lon, type: k.type, level: k.level, side: form.side === 'all' ? undefined : form.side, heading: hd })
+      toast('Элемент добавлен: ' + k.label, 'ok')
+      setPicked(null); setAdding(false); setSel(c.id); setReload((n) => n + 1)
+    } catch (e) { toast(e instanceof Error ? e.message : 'Не удалось добавить', 'err') } finally { setSaving(false) }
+  }
 
   async function search() {
     setMsg('')
@@ -45,6 +76,12 @@ export default function MapPage() {
               {hits.map((h) => <li key={h.type + h.code}><button type="button" className="w-full truncate rounded-lg px-2 py-1.5 text-left text-sm hover:bg-raised" onClick={() => setFly({ lon: h.lon, lat: h.lat, zoom: h.type === 'district' ? 12.5 : 15, n: Date.now() })}>{h.name} <span className="text-xs text-muted">{h.code}</span></button></li>)}
             </ul>
           </form>
+          {can('labeler') && (
+            <div className="flex flex-col gap-2 rounded-2xl border border-line bg-raised p-3">
+              <Button kind={adding ? 'primary' : 'secondary'} onClick={() => { setAdding((a) => !a); setPicked(null) }}>{adding ? 'Отмена' : '＋ Добавить элемент'}</Button>
+              {adding && <p className="text-xs text-muted">Нажмите на карте место элемента: откроется форма — что это и на какой стороне дороги.</p>}
+            </div>
+          )}
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-semibold">Слои</legend>
             {([['clusters', 'Элементы и ямы'], ['stretches', 'Плохие участки (D/E)'], ['roughness', 'Ровность A–E по сегментам'], ['roads', 'Все дороги серым']] as [keyof MapLayers, string][]).map(([k, l]) => (
@@ -77,12 +114,25 @@ export default function MapPage() {
           </div>
         </Card>
         <Card pad={false} className="min-h-[420px] overflow-hidden">
-          <MapView layers={layers} statuses={statuses} kind={kind} onSelect={(c) => setSel(c.id)} selectedId={sel} flyTo={fly} />
+          <MapView key={reload} layers={layers} statuses={statuses} kind={kind} onSelect={(c) => setSel(c.id)} selectedId={sel} flyTo={fly} onPick={adding ? setPicked : undefined} picked={picked} />
         </Card>
         <Card className="overflow-auto">
           {sel ? <ClusterPanel id={sel} onChanged={() => undefined} /> : <p className="text-sm text-muted">Выберите яму на карте — здесь появятся детали и действия модерации.</p>}
         </Card>
       </div>
+      <Modal open={!!picked} title="Новый элемент на карте" onClose={() => setPicked(null)}>
+        {picked && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted">Место: {picked.lat.toFixed(5)}, {picked.lon.toFixed(5)}. Элемент сразу появится как подтверждённый.</p>
+            <Field label="Что это"><Select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>{ELEMENT_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}</Select></Field>
+            <Field label="Где на дороге (по ходу движения)" hint="Лежачий и рельсы — на всю ширину: объехать нельзя, водитель только сбрасывает скорость.">
+              <div className="flex flex-wrap gap-2">{SIDES.map(([v, l]) => <button key={v} type="button" aria-pressed={form.side === v} onClick={() => setForm({ ...form, side: v })} className={cx('rounded-full border px-3.5 py-1.5 text-sm font-medium', form.side === v ? 'border-amber bg-amber-dim text-amber-text' : 'border-line text-muted')}>{l}</button>)}</div>
+            </Field>
+            <Field label="Направление движения, ° (необязательно)" hint="0 — север, 90 — восток. Если пусто, элемент виден водителям с обеих сторон."><Input inputMode="numeric" value={form.heading} onChange={(e) => setForm({ ...form, heading: e.target.value.replace(/[^0-9]/g, '') })} placeholder="например 90" /></Field>
+            <div className="flex justify-end gap-2"><Button onClick={() => setPicked(null)}>Отмена</Button><Button kind="primary" loading={saving} onClick={() => void addElement()}>Добавить</Button></div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

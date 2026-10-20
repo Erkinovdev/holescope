@@ -39,10 +39,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final tot = ref.watch(totalsProvider);
     final rows = <(String, String, IconData, Tone, String)>[
       (context.tr('Уведомления', 'Bildirishnomalar'), context.tr('Типы, тихие часы, лимит в день', 'Turlari, tinch soatlar, kunlik chegara'), Icons.notifications_none_rounded, Tone.amber, '/settings/notifications'),
-      (context.tr('Голос «Холи»', 'Ovoz «Holi»'), context.tr('Слово пробуждения, громкость, дистанция', 'Uygʻotuvchi soʻz, ovoz balandligi, masofa'), Icons.mic_none_rounded, Tone.smooth, '/settings/voice'),
-      (context.tr('События и вопросы', 'Hodisalar va savollar'), context.tr('Время окна, очередь, вибрация', 'Oyna vaqti, navbat, tebranish'), Icons.schedule_rounded, Tone.info, '/settings/events'),
-      (context.tr('Предупреждения о ямах', 'Choʻqqi ogohlantirishlari'), context.tr('Какие ямы, за сколько метров, звук', 'Qaysi choʻqqilar, necha metr oldin, tovush'), Icons.warning_amber_rounded, Tone.major, '/settings/warnings'),
-      (context.tr('Запись и батарея', 'Yozuv va batareya'), context.tr('Автозапись, положение, Wi-Fi', 'Avtoyozuv, joylashuv, Wi-Fi'), Icons.battery_charging_full_rounded, Tone.minor, '/settings/recording'),
+      (context.tr('Голос «Холи»', 'Ovoz «Holi»'), context.tr('Слово пробуждения и громкость', 'Uygʻotuvchi soʻz va ovoz balandligi'), Icons.mic_none_rounded, Tone.smooth, '/settings/voice'),
+      (context.tr('События и вопросы', 'Hodisalar va savollar'), context.tr('Спрашивать ли «что это было?»', '«Bu nima edi?» deb soʻrash'), Icons.schedule_rounded, Tone.info, '/settings/events'),
+      (context.tr('Предупреждения о ямах', 'Choʻqqi ogohlantirishlari'), context.tr('За сколько метров, звук и голос', 'Necha metr oldin, tovush va ovoz'), Icons.warning_amber_rounded, Tone.major, '/settings/warnings'),
+      (context.tr('Запись и батарея', 'Yozuv va batareya'), context.tr('Автозапись и положение телефона', 'Avtoyozuv va telefon joylashuvi'), Icons.battery_charging_full_rounded, Tone.minor, '/settings/recording'),
       (context.tr('Внешний вид', 'Koʻrinish'), context.tr('Тема, язык, размер текста', 'Mavzu, til, matn oʻlchami'), Icons.wb_sunny_outlined, Tone.amber, '/settings/look'),
       (context.tr('Данные и приватность', 'Maʼlumotlar va maxfiylik'), context.tr('Что хранится и как это убрать', 'Nima saqlanadi va uni qanday olib tashlash'), Icons.lock_outline_rounded, Tone.muted, '/settings/privacy'),
       (context.tr('Режим в машине', 'Mashina rejimi'), context.tr('Для планшета и штатного монитора', 'Planshet va shtat monitor uchun'), Icons.directions_car_outlined, Tone.info, '/settings/car'),
@@ -117,7 +117,6 @@ class VoiceSettings extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(settingsProvider);
     final n = ref.read(settingsProvider.notifier);
-    final engine = switch (s.holiEngine) { 'device' => context.tr('На телефоне', 'Telefonda'), 'cloud' => context.tr('Сервер', 'Server'), _ => context.tr('Авто', 'Avto') };
     return V2Screen(title: context.tr('Голос «Холи»', 'Ovoz «Holi»'), children: [
       V2Toggle(icon: Icons.mic_none_rounded, tone: Tone.amber, title: context.tr('«Привет, Холи»', '«Salom, Holi»'), sub: context.tr('Слушать слово пробуждения, пока экран включён', 'Ekran yoniq boʻlganda uygʻotuvchi soʻzni tinglash'), value: s.holiWake, onChanged: (v) => n.update((x) => x.copyWith(holiWake: v))),
       V2Toggle(icon: Icons.volume_up_outlined, tone: Tone.smooth, title: context.tr('Голос и сигналы', 'Ovoz va signallar'), sub: context.tr('Голосовые подсказки и предупреждения', 'Ovozli maslahat va ogohlantirishlar'), value: s.voice, onChanged: (v) => n.update((x) => x.copyWith(voice: v, beep: v ? x.beep : x.beep))),
@@ -126,7 +125,6 @@ class VoiceSettings extends ConsumerWidget {
         JustAudioHoliPlayer.volume = v;
         n.update((x) => x.copyWith(holiVolume: v));
       }),
-      V2Slider(title: context.tr('Предупреждать за', 'Oldindan ogohlantirish'), valueText: context.tr('${s.warnDistanceM} м', '${s.warnDistanceM} m'), value: s.warnDistanceM.toDouble(), min: 100, max: 300, divisions: 8, onChanged: (v) => n.update((x) => x.copyWith(warnDistanceM: ((v / 25).round() * 25)))),
       V2Row(
         icon: Icons.play_arrow_rounded,
         tone: Tone.amber,
@@ -137,26 +135,9 @@ class VoiceSettings extends ConsumerWidget {
           unawaited(v.play(HoliPhrase.aheadPothole, distanceM: s.warnDistanceM));
         },
       ),
-      V2Section(context.tr('Распознавание речи', 'Nutqni aniqlash')),
-      V2Row(icon: Icons.graphic_eq_rounded, tone: Tone.info, title: context.tr('Движок', 'Dvigatel'), value: engine, onTap: () async {
-        final v = await _pick<String>(context, [(context.tr('Авто', 'Avto'), 'auto'), (context.tr('На телефоне', 'Telefonda'), 'device'), (context.tr('Сервер', 'Server'), 'cloud')], s.holiEngine);
-        if (v != null) n.update((x) => x.copyWith(holiEngine: v));
-      }),
       V2Row(icon: Icons.record_voice_over_outlined, tone: Tone.muted, title: context.tr('Проверка голоса', 'Ovozni tekshirish'), sub: context.tr('Что слышит приложение и где сбой', 'Ilova nimani eshitadi va xato qayerda'), onTap: () => context.push('/voice-check')),
     ]);
   }
-}
-
-Future<T?> _pick<T>(BuildContext context, List<(String, T)> opts, T cur) {
-  final c = context.hp;
-  return showModalBottomSheet<T>(
-    context: context,
-    builder: (_) => SafeArea(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        for (final o in opts) ListTile(title: Text(o.$1, style: HpText.s(c.text, 16, FontWeight.w500)), trailing: o.$2 == cur ? Icon(Icons.check_rounded, color: c.amberText) : null, onTap: () => Navigator.pop(context, o.$2)),
-      ]),
-    ),
-  );
 }
 
 // ───────────────────────── События и вопросы ─────────────────────────
@@ -166,19 +147,9 @@ class EventSettings extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(settingsProvider);
     final n = ref.read(settingsProvider.notifier);
-    final win = [10, 20, 30];
     return V2Screen(title: context.tr('События и вопросы', 'Hodisalar va savollar'), children: [
       V2Toggle(icon: Icons.help_outline_rounded, tone: Tone.amber, title: context.tr('Спрашивать «что это было?»', '«Bu nima edi?» deb soʻrash'), sub: context.tr('После сильного удара', 'Kuchli zarbadan keyin'), value: s.holiAsk, onChanged: (v) => n.update((x) => x.copyWith(holiAsk: v))),
-      V2Section(context.tr('Время окна', 'Oyna vaqti')),
-      V2Segments(labels: [for (final w in win) context.tr('$w с', '$w s')], index: win.indexOf(s.eventWindowS).clamp(0, 2), onChanged: (i) => n.update((x) => x.copyWith(eventWindowS: win[i]))),
-      V2Toggle(icon: Icons.touch_app_outlined, tone: Tone.amber, title: context.tr('Продлевать касанием', 'Teginish bilan uzaytirish'), sub: context.tr('+5 секунд на каждое касание', 'Har teginishga +5 soniya'), value: s.eventExtend, onChanged: (v) => n.update((x) => x.copyWith(eventExtend: v))),
-      V2Toggle(icon: Icons.vibration_rounded, tone: Tone.minor, title: context.tr('Вибрация', 'Tebranish'), sub: context.tr('Тик при показе и при ответе', 'Koʻrsatilganda va javobda tik'), value: s.eventVibrate, onChanged: (v) => n.update((x) => x.copyWith(eventVibrate: v))),
       V2Toggle(icon: Icons.mic_none_rounded, tone: Tone.smooth, title: context.tr('Отвечать голосом', 'Ovoz bilan javob berish'), sub: context.tr('«Яма», «лежачий», «не знаю»', '«Choʻqqi», «yotuvchi», «bilmayman»'), value: s.eventVoiceReply, onChanged: (v) => n.update((x) => x.copyWith(eventVoiceReply: v))),
-      V2Section(context.tr('Если не успели', 'Ulgurmasangiz')),
-      V2Row(icon: Icons.history_rounded, tone: Tone.muted, title: context.tr('Хранить вопросы', 'Savollarni saqlash'), sub: context.tr('Очередь живёт столько часов', 'Navbat shuncha soat saqlanadi'), value: _hours(context, s.keepQueueH), onTap: () async {
-        final v = await _pick<int>(context, [for (final h in [6, 12, 24, 48]) (_hours(context, h), h)], s.keepQueueH);
-        if (v != null) n.update((x) => x.copyWith(keepQueueH: v));
-      }),
       V2Row(icon: Icons.list_alt_rounded, tone: Tone.info, title: context.tr('Очередь вопросов', 'Savollar navbati'), sub: context.tr('Ответить сейчас', 'Hozir javob berish'), onTap: () => context.push('/queue')),
       V2Row(icon: Icons.category_outlined, tone: Tone.muted, title: context.tr('Что можно отметить', 'Nimani belgilash mumkin'), sub: context.tr('Шесть типов ответов', 'Oltita javob turi'), onTap: () => context.push('/types')),
     ]);
@@ -194,10 +165,6 @@ class WarningSettings extends ConsumerWidget {
     final n = ref.read(settingsProvider.notifier);
     final dist = [100, 150, 300];
     return V2Screen(title: context.tr('Предупреждения о ямах', 'Choʻqqi ogohlantirishlari'), children: [
-      V2Section(context.tr('Какие ямы', 'Qaysi choʻqqilar')),
-      V2Toggle(icon: Icons.panorama_fish_eye_rounded, tone: Tone.amber, title: context.tr('Лёгкие', 'Yengil'), value: s.warnLight, onChanged: (v) => n.update((x) => x.copyWith(warnLight: v))),
-      V2Toggle(icon: Icons.panorama_fish_eye_rounded, tone: Tone.minor, title: context.tr('Средние', 'Oʻrtacha'), value: s.warnMid, onChanged: (v) => n.update((x) => x.copyWith(warnMid: v))),
-      V2Toggle(icon: Icons.panorama_fish_eye_rounded, tone: Tone.major, title: context.tr('Глубокие', 'Chuqur'), value: s.warnDeep, onChanged: (v) => n.update((x) => x.copyWith(warnDeep: v))),
       V2Section(context.tr('За сколько', 'Necha metr oldin')),
       V2Segments(labels: [for (final d in dist) context.tr('$d м', '$d m')], index: dist.contains(s.warnDistanceM) ? dist.indexOf(s.warnDistanceM) : 1, onChanged: (i) => n.update((x) => x.copyWith(warnDistanceM: dist[i]))),
       V2Toggle(icon: Icons.speed_rounded, tone: Tone.minor, title: context.tr('Учитывать скорость', 'Tezlikni hisobga olish'), sub: context.tr('Чем быстрее, тем раньше', 'Tez boʻlsa — oldinroq'), value: s.warnUseSpeed, onChanged: (v) => n.update((x) => x.copyWith(warnUseSpeed: v))),
@@ -223,7 +190,6 @@ class RecordingSettings extends ConsumerWidget {
       V2Segments(labels: [context.tr('Сиденье', 'Oʻrindiq'), context.tr('Держатель', 'Tutqich'), context.tr('Рука', 'Qoʻl')], index: mounts.contains(s.mount) ? mounts.indexOf(s.mount) : 1, onChanged: (i) => n.update((x) => x.copyWith(mount: mounts[i]))),
       V2Row(icon: Icons.phone_android_rounded, tone: Tone.amber, title: context.tr('Подробнее о положении', 'Joylashuv haqida batafsil'), value: mountName(context, s.mount), onTap: () => context.push('/mount')),
       V2Section(context.tr('Заряд и данные', 'Zaryad va maʼlumot')),
-      V2Toggle(icon: Icons.wifi_rounded, tone: Tone.info, title: context.tr('Отправлять по Wi-Fi', 'Wi-Fi orqali yuborish'), sub: context.tr('Мобильный интернет не тратим', 'Mobil internet sarflanmaydi'), value: s.wifiOnly, onChanged: (v) => n.update((x) => x.copyWith(wifiOnly: v))),
       V2Row(icon: Icons.cloud_upload_outlined, tone: Tone.muted, title: context.tr('Ждёт отправки', 'Yuborilishini kutmoqda'), sub: context.tr('Поездки в очереди', 'Navbatdagi safarlar'), value: '$queue', chevron: false),
     ]);
   }
@@ -244,7 +210,6 @@ class LookSettings extends ConsumerWidget {
       V2Row(icon: Icons.language_rounded, tone: Tone.info, title: context.tr('Язык', 'Til'), value: lang, onTap: () => context.push('/settings/language')),
       V2Slider(title: context.tr('Размер текста', 'Matn oʻlchami'), valueText: '${(s.textScale * 100).round()}%', value: s.textScale, min: 0.85, max: 1.4, divisions: 11, onChanged: (v) => n.update((x) => x.copyWith(textScale: (v * 20).round() / 20))),
       V2Toggle(icon: Icons.visibility_outlined, tone: Tone.minor, title: context.tr('Высокая контрастность', 'Yuqori kontrast'), sub: context.tr('Ярче цвета и толще линии', 'Ranglar yorqinroq, chiziqlar qalinroq'), value: s.highContrast, onChanged: (v) => n.update((x) => x.copyWith(highContrast: v))),
-      V2Toggle(icon: Icons.bolt_rounded, tone: Tone.muted, title: context.tr('Меньше анимаций', 'Kamroq animatsiya'), sub: context.tr('Для слабых телефонов', 'Zaif telefonlar uchun'), value: s.reduceMotion, onChanged: (v) => n.update((x) => x.copyWith(reduceMotion: v))),
     ]);
   }
 }
@@ -330,7 +295,6 @@ class CarSettings extends ConsumerWidget {
       V2Toggle(icon: Icons.light_mode_outlined, tone: Tone.minor, title: context.tr('Не гасить экран', 'Ekranni oʻchirmaslik'), sub: context.tr('Пока идёт поездка', 'Safar davomida'), value: s.keepScreenOn, onChanged: (v) => n.update((x) => x.copyWith(keepScreenOn: v))),
       V2Section(context.tr('Подключение', 'Ulanish')),
       V2Row(icon: Icons.directions_car_outlined, tone: Tone.muted, title: context.tr('Автомобиль', 'Avtomobil'), sub: s.carName ?? context.tr('Не указан', 'Koʻrsatilmagan'), onTap: () => context.push('/vehicle')),
-      if (!AppConfig.carMonitor) V2Row(icon: Icons.tv_rounded, tone: Tone.info, title: context.tr('Показать экран монитора', 'Monitor ekranini koʻrsatish'), sub: context.tr('Как приложение выглядит на широком экране', 'Keng ekranda ilova qanday koʻrinadi'), onTap: () => context.push('/car')),
     ]);
   }
 }

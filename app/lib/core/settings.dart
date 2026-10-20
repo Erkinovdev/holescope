@@ -49,7 +49,7 @@ class AppSettings {
     this.quietFromH = 23,
     this.quietToH = 7,
     this.maxPerDay = 3,
-    this.wifiOnly = true,
+    this.wifiOnly = false,
     this.textScale = 1.0,
     this.highContrast = false,
     this.carBig = true,
@@ -251,7 +251,7 @@ class SettingsNotifier extends Notifier<AppSettings> {
       quietFromH: i('quietFromH', d.quietFromH),
       quietToH: i('quietToH', d.quietToH),
       maxPerDay: i('maxPerDay', d.maxPerDay),
-      wifiOnly: b('wifiOnly', d.wifiOnly),
+      wifiOnly: false, // отправка по любой сети: поездки маленькие, настройки «только Wi-Fi» больше нет
       textScale: _p.getDouble('textScale') ?? d.textScale,
       highContrast: b('highContrast', d.highContrast),
       carBig: b('carBig', d.carBig),

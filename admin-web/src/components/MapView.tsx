@@ -25,8 +25,8 @@ export interface MapLayers { roads: boolean; roughness: boolean; clusters: boole
 /** element — только элементы (глубокие ямы, лежачие, люки, рельсы); quality — то, что уходит в качество дороги; all — всё */
 export type ClusterKind = 'element' | 'quality' | 'all'
 
-export default function MapView({ layers, statuses, kind = 'element', onSelect, selectedId, flyTo, height = '100%', minimal = false, center, zoom = 12, onMove }: {
-  layers: MapLayers; statuses?: string[]; kind?: ClusterKind; onSelect?: (c: Cluster) => void; selectedId?: number | null; flyTo?: { lon: number; lat: number; zoom?: number; n: number } | null
+export default function MapView({ layers, statuses, kind = 'element', onSelect, onPick, picked, selectedId, flyTo, height = '100%', minimal = false, center, zoom = 12, onMove }: {
+  layers: MapLayers; statuses?: string[]; kind?: ClusterKind; onSelect?: (c: Cluster) => void; onPick?: (p: { lon: number; lat: number }) => void; picked?: { lon: number; lat: number } | null; selectedId?: number | null; flyTo?: { lon: number; lat: number; zoom?: number; n: number } | null
   height?: string | number; minimal?: boolean; center?: [number, number]; zoom?: number; onMove?: (c: { lon: number; lat: number; zoom: number }) => void
 }) {
   const el = useRef<HTMLDivElement>(null)
@@ -35,8 +35,8 @@ export default function MapView({ layers, statuses, kind = 'element', onSelect, 
   const cellCache = useRef(new Map<string, { at: number; feats: Feat[] }>())
   const loadGen = useRef(0)
   const [status, setStatus] = useState<string>('')
-  const propsRef = useRef({ layers, statuses, kind, onSelect, onMove })
-  propsRef.current = { layers, statuses, kind, onSelect, onMove }
+  const propsRef = useRef({ layers, statuses, kind, onSelect, onMove, onPick })
+  propsRef.current = { layers, statuses, kind, onSelect, onMove, onPick }
 
   // создание карты
   useEffect(() => {
@@ -57,6 +57,7 @@ export default function MapView({ layers, statuses, kind = 'element', onSelect, 
       m.addSource('segs', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       m.addSource('str', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       m.addSource('cl', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      m.addSource('pick', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       // протяжённые участки плохого качества: широкая полупрозрачная подложка под цветной ровностью
       m.addLayer({ id: 'stretch-glow', type: 'line', source: 'str', layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': ['match', ['get', 'cls'], 'E', css('--crater'), css('--warn')], 'line-opacity': 0.22, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 8, 16, 26], 'line-blur': 2 } })
@@ -71,6 +72,8 @@ export default function MapView({ layers, statuses, kind = 'element', onSelect, 
       m.addLayer({ id: 'clusters', type: 'circle', source: 'cl',
         paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'passes'], 0, 6, 10, 11], 'circle-color': clusterExpr(), 'circle-stroke-color': css('--bg-base'), 'circle-stroke-width': 1.8 } })
       m.addLayer({ id: 'core', type: 'circle', source: 'cl', paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'passes'], 0, 2.2, 10, 4], 'circle-color': css('--bg-base') } })
+      m.addLayer({ id: 'pick-glow', type: 'circle', source: 'pick', paint: { 'circle-radius': 26, 'circle-color': css('--amber'), 'circle-opacity': 0.28, 'circle-blur': 0.6 } })
+      m.addLayer({ id: 'pick', type: 'circle', source: 'pick', paint: { 'circle-radius': 9, 'circle-color': css('--amber'), 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } })
       m.on('click', 'clusters', (e) => {
         const id = e.features?.[0]?.properties?.id as number | undefined
         const c = clustersRef.current.find((x) => x.id === id)
@@ -80,6 +83,12 @@ export default function MapView({ layers, statuses, kind = 'element', onSelect, 
       m.on('mouseleave', 'clusters', () => { m.getCanvas().style.cursor = '' })
       load()
     }
+    // режим «добавить элемент»: клик по пустому месту отдаёт координаты (клик по существующему элементу открывает его карточку)
+    m.on('click', (e) => {
+      if (!propsRef.current.onPick) return
+      if (m.getLayer('clusters') && m.queryRenderedFeatures(e.point, { layers: ['clusters'] }).length) return
+      propsRef.current.onPick({ lon: e.lngLat.lng, lat: e.lngLat.lat })
+    })
     m.on('load', addOverlay)
     m.on('styledata', () => { if (m.isStyleLoaded()) addOverlay() }) // после смены темы (setStyle) слои добавляются заново
     let t: ReturnType<typeof setTimeout> | undefined
@@ -180,6 +189,12 @@ export default function MapView({ layers, statuses, kind = 'element', onSelect, 
   }
   const selectedRef = useRef<number | null | undefined>(selectedId)
   useEffect(() => { selectedRef.current = selectedId; pushClusters() }, [selectedId])
+  useEffect(() => {
+    const m = map.current
+    const src = m?.getSource('pick') as GeoJSONSource | undefined
+    src?.setData({ type: 'FeatureCollection', features: picked ? [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [picked.lon, picked.lat] } }] : [] })
+    if (m) m.getCanvas().style.cursor = onPick ? 'crosshair' : ''
+  }, [picked?.lon, picked?.lat, !!onPick])
   useEffect(() => { load() /* смена слоёв/фильтров */ }, [layers.roads, layers.roughness, layers.clusters, layers.stretches, kind, (statuses ?? []).join(',')])
   useEffect(() => { if (flyTo && map.current) map.current.flyTo({ center: [flyTo.lon, flyTo.lat], zoom: flyTo.zoom ?? 15, duration: 700 }) }, [flyTo?.n])
 

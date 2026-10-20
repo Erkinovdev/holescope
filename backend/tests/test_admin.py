@@ -373,3 +373,14 @@ def test_calm_sensitivity_command(db):
     call_command("calm_sensitivity", floor=2.8, k=5.5)
     av = AlgoVersion.objects.get(kind="rules", active=True)
     assert av.params["floor"] == 2.8 and av.params["k_noise"] == 5.5
+
+
+def test_admin_adds_element_with_side(staff, db):
+    c, tk = staff
+    h = tk["labeler"]
+    r = c.post(f"{A}/clusters/create", json.dumps({"lat": 41.3, "lon": 69.25, "type": "pothole", "level": "deep", "side": "right"}), content_type=J, headers=h)
+    assert r.status_code == 201
+    d = r.json()
+    assert d["element"] is True and d["side"] == "right" and d["advice"] == "avoid"
+    r = c.post(f"{A}/clusters/create", json.dumps({"lat": 41.3, "lon": 69.26, "type": "bump", "level": "mid", "side": "left"}), content_type=J, headers=h)
+    assert r.json()["span"] == "full" and r.json()["advice"] == "slow"    # лежачий на всю ширину, даже если «сторона» указана

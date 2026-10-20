@@ -250,7 +250,11 @@ def cluster_create(request):
     if t not in TYPES or lv not in LEVELS:
         return JsonResponse({"error": "type/level"}, status=400)
     hd = d.get("heading")
-    c = EventCluster.objects.create(lat=lat, lon=lon, heading=hd, type=t, level=lv, status="confirmed", passes=0, devices=0, confidence=1.0, last_hit=timezone.now(), type_votes={"admin": 1})
+    side = d.get("side")
+    lane_info = {}
+    if side in ("left", "right", "center"):               # сторона по ходу движения, заданная человеком на месте
+        lane_info = dict(n=1, median_m={"left": -2.0, "right": 2.0, "center": 0.0}[side], spread_m=None, side=side, confidence=1.0, source="admin")
+    c = EventCluster.objects.create(lat=lat, lon=lon, heading=hd, type=t, level=lv, status="confirmed", passes=0, devices=0, confidence=1.0, last_hit=timezone.now(), type_votes={"admin": 1}, lane=lane_info)
     m = get_index().snap(lat, lon, hd)
     if m:
         EventCluster.objects.filter(pk=c.pk).update(segment_id=m.segment_id)
