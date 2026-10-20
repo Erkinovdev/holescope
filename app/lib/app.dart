@@ -13,6 +13,7 @@ import 'package:holescope/features/car_mode.dart';
 import 'package:holescope/features/comfort.dart';
 import 'package:holescope/features/events_screens.dart';
 import 'package:holescope/features/screens_live.dart';
+import 'package:holescope/features/trip_screens.dart';
 import 'package:holescope/features/screens_data.dart';
 import 'package:holescope/features/screens_more.dart';
 import 'package:holescope/features/screens_new.dart';
@@ -83,6 +84,7 @@ GoRouter buildRouter({String initial = '/splash'}) => GoRouter(
         GoRoute(path: '/vehicle', builder: (_, __) => const VehicleScreen()),
         GoRoute(path: '/question', builder: (_, __) => const QuestionScreen()),
         GoRoute(path: '/trip-summary', builder: (_, __) => const TripSummaryScreen()),
+        GoRoute(path: '/trip-review', builder: (_, __) => const TripReviewScreen()),
         GoRoute(path: '/mount', builder: (_, __) => const MountStep(onboarding: false)),
         GoRoute(path: '/role', builder: (_, __) => const RoleStep(onboarding: false)),
       ],

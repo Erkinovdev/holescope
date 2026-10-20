@@ -11,6 +11,7 @@ import 'package:holescope/core/settings.dart';
 import 'package:holescope/services/algo_params_sync.dart';
 import 'package:holescope/services/api_client.dart';
 import 'package:holescope/services/config.dart';
+import 'package:holescope/services/demo_seed.dart';
 import 'package:holescope/services/local_db.dart';
 import 'package:holescope/services/notify.dart';
 import 'package:holescope/services/providers.dart';
@@ -28,6 +29,7 @@ Future<void> main() async {
   await initLocalDb(); // в вебе загружает sqlite3.wasm
   final dir = kIsWeb ? null : await getApplicationSupportDirectory();
   final db = LocalDb.open(dir == null ? 'holescope.db' : p.join(dir.path, 'holescope.db'));
+  if (kIsWeb && Uri.base.queryParameters['seed'] == '1') seedDemoTrip(db); // проверка экранов итогов в браузере
   AlgoParamsSync.loadCached(prefs);
   AlgoParamsSync.refresh(ApiClient(AppConfig.resolveApiBase()), prefs); // в фоне: параметры алгоритма с сервера
   runApp(ProviderScope(

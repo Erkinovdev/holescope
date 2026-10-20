@@ -4,10 +4,12 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
 
+import '../algo/elements.dart';
 import '../algo/detector.dart';
 import '../algo/frame.dart';
 import '../algo/params.dart';
 import '../algo/pipeline.dart';
+import '../algo/roughness.dart' show RoadSegment;
 import '../algo/trip_state.dart';
 import 'config.dart';
 import 'csv_writer.dart';
@@ -88,6 +90,12 @@ class RecorderContext {
 /// Ядро фоновой записи: принимает отсчёты (из реальных датчиков или из воспроизведения CSV),
 /// сам стартует/останавливает поездки, считает алгоритм v2 и кладёт результат в очередь отправки.
 /// Не зависит от Flutter-плагинов, поэтому тестируется на записях analysis/*.csv.
+/// Трек поездки для итогов: до 300 отрезков [широта A, долгота A, широта B, долгота B, класс A–E] (редкие отрезки пропускаем равномерно).
+List<List<Object>> _trackOf(List<RoadSegment> segs) {
+  final step = segs.length <= 300 ? 1 : (segs.length / 300).ceil();
+  return [for (var i = 0; i < segs.length; i += step) [segs[i].latA, segs[i].lonA, segs[i].latB, segs[i].lonB, segs[i].cls]];
+}
+
 class TripRecorder {
   TripRecorder({
     required this.db,
@@ -349,7 +357,8 @@ class TripRecorder {
     // режим транспорта: не-авто поездки не идут в карту ям
     final speedsKmh = [for (var i = 0; i < gps.length; i++) gps.speed[i] * 3.6];
     final (mode, modeConf) = classifyMode(speedsKmh, _stopsPerKm(speedsKmh, res.distanceKm));
-    final potholes = trimmed.events.where((e) => e.type == 'pothole').length;
+    // «ям найдено» — только элементы; мелкие и средние ямы идут в качество дороги
+    final potholes = trimmed.events.where((e) => isElement(e.type, e.level)).length;
     final payload = tripPayload(trimmed, startedAt: startedAt, startReason: 'auto', endReason: end.reason, mode: mode, modeConf: modeConf);
     payload['client_id'] = const Uuid().v4(); // повторная отправка не создаст дубль на сервере
     if (ctx.role == 'passenger') {
@@ -367,6 +376,12 @@ class TripRecorder {
         'segments': {for (final c in riLabels) c: trimmed.segments.where((s) => s.cls == c).length},
         'suspension': res.suspension.toJson(),
         'events_total': res.events.length,
+        'quality_hits': trimmed.events.where((e) => e.type == 'pothole' && !isElement(e.type, e.level)).length,
+        'track': _trackOf(trimmed.segments),
+        'events': [
+          for (final e in trimmed.events.where((e) => e.type != 'touch' && e.type != 'noise').take(80))
+            {'at': startedAt.millisecondsSinceEpoch + (e.t * 1000).round(), 'lat': e.lat, 'lon': e.lon, 'type': e.type, 'level': e.level ?? '', 'speed': e.speedKmh.round(), 'el': isElement(e.type, e.level) ? 1 : 0},
+        ],
       },
     );
     final upload = res.distanceKm >= config.minUploadDistanceKm && (trimmed.events.isNotEmpty || trimmed.segments.isNotEmpty);

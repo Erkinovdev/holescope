@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:holescope/core/demo.dart';
 import 'package:holescope/core/loaders.dart';
+import 'package:holescope/core/road_map.dart';
 import 'package:holescope/core/settings.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/core/widgets.dart';
 import 'package:holescope/l10n/app_localizations.dart';
-import 'package:holescope/features/comfort.dart' show comfortScore;
 import 'package:holescope/l10n/tr.dart';
 import 'package:holescope/services/ahead_warner.dart';
 import 'package:holescope/services/api_client.dart';
@@ -107,66 +107,148 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
 }
 
 // ───────────────────────── Поездка (Drive) ─────────────────────────
-class DriveScreen extends ConsumerWidget {
+class DriveScreen extends ConsumerStatefulWidget {
   const DriveScreen({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriveScreen> createState() => _DriveScreenState();
+}
+
+class _DriveScreenState extends ConsumerState<DriveScreen> {
+  final map = RoadMapController();
+  bool centered = false;
+
+  @override
+  void dispose() {
+    map.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final c = context.hp;
     final s = ref.watch(recorderSnapshotProvider);
     final eng = ref.read(engineProvider);
+    final warn = ref.watch(warningProvider);
     final driving = s.phase == RecorderPhase.driving;
     final armed = s.phase == RecorderPhase.armed;
     final status = driving ? l.driveRecording : (armed ? l.driveDetecting : (s.phase == RecorderPhase.idle ? l.manualStartHint : l.driveIdle));
-    final tone = driving ? Tone.smooth : (armed ? Tone.amber : Tone.muted);
     final queue = ref.watch(queueSizeProvider);
-    return HpFill(bottom: [
-      if (queue > 0) Text(l.syncQueue(queue), textAlign: TextAlign.center, style: HpText.s(c.muted, 13, FontWeight.w400)),
-      const HoliCallButton(),
-      if (driving) HpButton(l.skipTrip, kind: HpButtonKind.secondary, onPressed: eng.skipTrip),
-      HpButton(
-        driving ? l.driveStop : l.driveStart,
-        kind: driving ? HpButtonKind.danger : HpButtonKind.primary,
-        onPressed: () async {
-          if (driving) {
-            final t = await eng.stopManual();
-            if (context.mounted && t != null) context.push('/trip-summary');
-          } else {
-            eng.startManual();
-          }
-        },
+    if (s.lat != null && s.lon != null) {
+      map.setMe(s.lat, s.lon, s.heading);
+      if (!centered || driving) {
+        final first = !centered;
+        centered = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => map.moveTo(s.lat!, s.lon!, mpp: first ? 2.4 : null));
+      }
+    }
+    final side = switch (warn?.side) { 'left' => l.sideLeft, 'right' => l.sideRight, _ => '' };
+    final level = switch (warn?.level) { 'light' => l.levelLight, 'mid' => l.levelMid, 'danger' => l.levelDanger, _ => l.levelDeep };
+    final warnTitle = switch (warn?.type) { 'bump' => context.tr('Лежачий', 'Yotiq'), 'manhole' => context.tr('Люк', 'Lyuk'), 'rail_tram' || 'rail_train' => context.tr('Рельсы', 'Relslar'), _ => context.tr('Яма', 'Choʻqqi') };
+    return Stack(children: [
+      Positioned.fill(child: RoadMapView(controller: map, onClusterTap: (cl) => context.push('/pothole/${cl.id}'))),
+      Positioned(
+        left: 16,
+        right: 16,
+        top: 12,
+        child: SafeArea(
+          bottom: false,
+          child: warn != null
+              ? Container(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 16, 12),
+                  decoration: BoxDecoration(color: Color.alphaBlend(c.crater.withValues(alpha: 0.2), c.surface), borderRadius: BorderRadius.circular(24), border: Border.all(color: c.crater.withValues(alpha: 0.75), width: 1.5), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 18)]),
+                  child: Column(spacing: 10, children: [
+                    Row(spacing: 14, children: [
+                      Container(width: 56, height: 56, decoration: BoxDecoration(color: c.crater, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 32)),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                        Text('$warnTitle ${context.tr('через', 'dan keyin')} ${warn.distanceM} ${l.metersWord}', style: HpText.s(c.text, 19, FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text('$level${side.isEmpty ? '' : ' · $side'}${warn.safeSpeed != null ? ' · ${context.tr('до', 'gacha')} ${warn.safeSpeed} ${l.kmh}' : ''}', style: HpText.s(c.muted, 14, FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ])),
+                      Column(mainAxisSize: MainAxisSize.min, children: [Text('${warn.distanceM}', style: HpText.s(c.crater, 34, FontWeight.w800, h: 1)), Text(l.metersWord, style: HpText.s(c.muted, 12, FontWeight.w600))]),
+                    ]),
+                    ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: (1 - warn.distanceM / 150).clamp(0.05, 1.0), minHeight: 5, color: c.crater, backgroundColor: c.crater.withValues(alpha: 0.18))),
+                  ]),
+                )
+              : Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    decoration: BoxDecoration(color: c.surface.withValues(alpha: 0.94), borderRadius: BorderRadius.circular(999), border: Border.all(color: c.line)),
+                    child: Row(mainAxisSize: MainAxisSize.min, spacing: 8, children: [HpDot(driving ? Tone.smooth : (armed ? Tone.amber : Tone.muted), size: 10), Flexible(child: Text(status, style: HpText.s(c.text, 13, FontWeight.w600), overflow: TextOverflow.ellipsis))]),
+                  ),
+                ),
+        ),
       ),
-    ], children: [
-      Row(spacing: 10, children: [
-        HpDot(tone, size: 12),
-        Expanded(child: Text(status, style: HpText.s(c.muted, 14, FontWeight.w500))),
-      ]),
-      Padding(
-        padding: const EdgeInsets.only(top: 40, bottom: 20),
-        child: Column(children: [
-          FittedBox(fit: BoxFit.scaleDown, child: Text('${s.speedKmh.round()}', style: HpText.s(c.text, 160, FontWeight.w700, ls: -9.6, h: 1.1))),
-          Text(l.kmh, style: HpText.s(c.muted, 24, FontWeight.w500)),
-        ]),
-      ),
-      HpCard(
-        padding: 24,
-        radius: 28,
-        child: Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-              Text(l.driveFound, style: HpText.s(c.muted, 13, FontWeight.w500)),
-              Text('${s.found}', style: HpText.s(c.amberText, 44, FontWeight.w700, ls: -0.88)),
-            ]),
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [c.bgBase.withValues(alpha: 0), c.bgBase.withValues(alpha: 0.92)], stops: const [0, 0.35]),
           ),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, spacing: 2, children: [
-            Text(l.driveDistance, style: HpText.s(c.muted, 13, FontWeight.w500)),
-            Text(l.kmValue(fmtKm(s.distanceKm)), style: HpText.s(c.text, 24, FontWeight.w600)),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(28), border: Border.all(color: c.line), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 20)]),
+              child: Row(spacing: 20, children: [
+                SizedBox(
+                  width: 128,
+                  height: 128,
+                  child: CustomPaint(
+                    painter: _SpeedRing(s.speedKmh / 120, c.amber, c.line),
+                    child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('${s.speedKmh.round()}', style: HpText.s(c.text, 44, FontWeight.w800, ls: -1.5, h: 1)), Text(l.kmh, style: HpText.s(c.muted, 13, FontWeight.w500))])),
+                  ),
+                ),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
+                    for (final r in [(context.tr('Ям на пути', 'Yoʻldagi choʻqqilar'), '${s.found}', s.found > 0 ? c.crater : c.text), (context.tr('Пройдено', 'Bosib oʻtilgan'), l.kmValue(fmtKm(s.distanceKm)), c.text)])
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(r.$1, style: HpText.s(c.muted, 12, FontWeight.w500)), Text(r.$2, style: HpText.s(r.$3, 24, FontWeight.w800, h: 1.15))]),
+                    if (queue > 0) Text(l.syncQueue(queue), style: HpText.s(c.muted, 12, FontWeight.w400)),
+                  ]),
+                ),
+              ]),
+            ),
+            const HoliPanel(),
+            Row(spacing: 10, children: [
+              const Expanded(child: HoliCallButton()),
+              if (driving) Expanded(child: HpButton(l.skipTrip, kind: HpButtonKind.secondary, onPressed: eng.skipTrip)),
+            ]),
+            HpButton(
+              driving ? l.driveStop : l.driveStart,
+              kind: driving ? HpButtonKind.danger : HpButtonKind.primary,
+              onPressed: () async {
+                if (driving) {
+                  final t = await eng.stopManual();
+                  if (context.mounted && t != null) context.push('/trip-summary');
+                } else {
+                  eng.startManual();
+                }
+              },
+            ),
           ]),
-        ]),
+        ),
       ),
-      const HoliPanel(),
     ]);
   }
+}
+
+/// Кольцо скорости: янтарная дуга от 0 до 120 км/ч на тёмной окружности.
+class _SpeedRing extends CustomPainter {
+  _SpeedRing(this.v, this.color, this.track);
+  final double v;
+  final Color color, track;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Rect.fromCircle(center: size.center(Offset.zero), radius: size.width / 2 - 8);
+    const start = -math.pi * 0.5, sweep = math.pi * 2;
+    canvas.drawArc(r, start, sweep, false, Paint()..color = track..style = PaintingStyle.stroke..strokeWidth = 12);
+    canvas.drawArc(r, start, sweep * v.clamp(0.0, 1.0), false, Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 12..strokeCap = StrokeCap.round);
+  }
+
+  @override
+  bool shouldRepaint(_SpeedRing o) => o.v != v || o.color != color;
 }
 
 // ───────────────────────── Предупреждение (HUD) ─────────────────────────
@@ -239,82 +321,6 @@ class WarningScreen extends ConsumerWidget {
   }
 }
 
-// ───────────────────────── Итоги поездки ─────────────────────────
-class TripSummaryScreen extends ConsumerWidget {
-  const TripSummaryScreen({super.key});
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context);
-    final c = context.hp;
-    final trips = ref.watch(tripsProvider);
-    final t = trips.isEmpty ? null : trips.first;
-    Widget stat(String v, String label) => Expanded(
-          child: HpCard(
-            padding: 16,
-            child: Column(spacing: 2, children: [
-              Text(v, style: HpText.s(c.amberText, 26, FontWeight.w700, ls: -0.26)),
-              Text(label, style: HpText.s(c.muted, 12, FontWeight.w500), textAlign: TextAlign.center),
-            ]),
-          ),
-        );
-    final seg = <String, int>{
-      for (final e in ((t?.summary['segments'] as Map?) ?? const {}).entries) e.key as String: (e.value as num).toInt(),
-    };
-    final segTotal = seg.values.fold<int>(0, (a, b) => a + b);
-    final colors = {'A': c.smooth, 'B': c.smooth, 'C': c.amber, 'D': c.warn, 'E': c.crater};
-    return HpPage(
-      child: HpBody(top: 20, children: [
-        HpTitle(l.tripSummary),
-        if (t == null)
-          HpSub(l.questionsEmpty)
-        else ...[
-          HpSub(fmtDate(t.startedAt)),
-          Row(spacing: 10, children: [
-            stat(fmtKm(t.distanceKm), l.tripKm),
-            stat('${t.potholes}', l.tripPotholes),
-            stat(t.distanceKm > 0 ? fmtKm(t.potholes / t.distanceKm) : '0', l.tripPerKm),
-          ]),
-          if (comfortScore(seg) != null)
-            HpCard(
-              radius: 22,
-              child: Row(spacing: 16, children: [
-                SizedBox(width: 72, height: 72, child: Stack(alignment: Alignment.center, children: [
-                  CircularProgressIndicator(value: comfortScore(seg)! / 100, strokeWidth: 6, color: comfortScore(seg)! >= 70 ? c.smooth : (comfortScore(seg)! >= 45 ? c.amber : c.crater), backgroundColor: c.line),
-                  Text('${comfortScore(seg)}', style: HpText.s(c.text, 22, FontWeight.w800)),
-                ])),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
-                  Text(context.tr('Комфорт поездки', 'Safar qulayligi'), style: HpText.s(c.text, 16, FontWeight.w700)),
-                  Text(context.tr('По ровности участков: A — 100, B — 85, C — 60, D — 30, E — 0.', 'Qismlar tekisligi boʻyicha: A — 100, B — 85, C — 60, D — 30, E — 0.'), style: HpText.s(c.muted, 12, FontWeight.w400, h: 1.3)),
-                ])),
-              ]),
-            ),
-          HpCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-              Text(l.tripRoughness, style: HpText.s(c.muted, 13, FontWeight.w500)),
-              Row(spacing: 6, children: [
-                for (final k in const ['A', 'B', 'C', 'D', 'E'])
-                  Expanded(
-                    flex: math.max(1, segTotal == 0 ? 1 : seg[k] ?? 0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(color: colors[k]!.withValues(alpha: (seg[k] ?? 0) == 0 ? 0.08 : 0.28), borderRadius: BorderRadius.circular(10)),
-                      alignment: Alignment.center,
-                      child: Text(k, style: HpText.s(c.text, 14, FontWeight.w700)),
-                    ),
-                  ),
-              ]),
-              if (segTotal > 0)
-                Text([for (final k in const ['A', 'B', 'C', 'D', 'E']) '$k ${((seg[k] ?? 0) * 100 / segTotal).round()}%'].join(' · '), style: HpText.s(c.muted, 12, FontWeight.w400)),
-            ]),
-          ),
-        ],
-        HpButton(l.questionTitle, kind: HpButtonKind.secondary, onPressed: () => context.push('/question')),
-        HpButton(l.tripDone, onPressed: () => context.go('/map')),
-      ]),
-    );
-  }
-}
-
 // ───────────────────────── История поездок ─────────────────────────
 class TripsScreen extends ConsumerWidget {
   const TripsScreen({super.key});
@@ -379,17 +385,37 @@ class QuestionScreen extends ConsumerStatefulWidget {
 class _QuestionScreenState extends ConsumerState<QuestionScreen> {
   int idx = 0;
   bool more = false;
+  String? type; // pothole | bump | manhole | rail | rough | unknown
+  String depth = 'mid'; // light | mid | deep
+  bool sending = false;
 
   Future<void> _answer(QuestionDto q, String a) async {
     final eng = ref.read(engineProvider);
+    setState(() => sending = true);
     try {
       await eng.api.answerQuestion(q.id, a);
     } on ApiException {
       // не критично: вопрос останется открытым на сервере
     }
     if (!mounted) return;
-    setState(() => idx++);
+    setState(() {
+      idx++;
+      type = null;
+      depth = 'mid';
+      more = false;
+      sending = false;
+    });
   }
+
+  /// Ответ для сервера из выбранного типа и глубины.
+  String _key() => switch (type) {
+        'pothole' => 'pothole_$depth',
+        'bump' => 'bump',
+        'manhole' => 'manhole',
+        'rail' => 'rail_tram',
+        'rough' => 'washboard',
+        _ => 'not_sure',
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -398,66 +424,113 @@ class _QuestionScreenState extends ConsumerState<QuestionScreen> {
     final qs = ref.watch(questionsProvider);
     final tax = ref.watch(taxonomyProvider).value;
     final isUz = Localizations.localeOf(context).languageCode == 'uz';
-    final fallback = {
-      'pothole_light': (l.optPotholeLight, Tone.minor),
-      'pothole_mid': (l.optPotholeMid, Tone.minor),
-      'pothole_deep': (l.optPotholeDeep, Tone.major),
-      'bump': (l.optBump, Tone.smooth),
-      'manhole': (l.optManhole, Tone.info),
-      'rail': (l.optRail, Tone.amber),
-    };
     String nameOf(String k) {
       final it = tax?.items[k];
-      return it == null ? (fallback[k]?.$1 ?? k) : (isUz ? it.uz : it.ru);
+      return it == null ? k : (isUz ? it.uz : it.ru);
     }
 
-    Tone toneOf(String k) {
-      final lv = tax?.items[k]?.level ?? '';
-      return switch (lv) { 'danger' || 'deep' => Tone.major, 'mid' => Tone.minor, 'light' => Tone.amber, _ => fallback[k]?.$2 ?? Tone.info };
-    }
-
+    final tiles = <(String, String, IconData, Color)>[
+      ('pothole', context.tr('Яма', 'Choʻqqi'), Icons.trip_origin_rounded, c.amber),
+      ('bump', context.tr('Лежачий', 'Yotiq'), Icons.show_chart_rounded, c.warn),
+      ('manhole', context.tr('Люк', 'Lyuk'), Icons.circle_outlined, c.info),
+      ('rail', context.tr('Рельсы', 'Relslar'), Icons.train_outlined, c.amber),
+      ('rough', context.tr('Неровность', 'Notekislik'), Icons.waves_rounded, c.smooth),
+      ('unknown', context.tr('Не знаю', 'Bilmayman'), Icons.help_outline_rounded, c.muted),
+    ];
     return HpPage(
       child: HpBody(top: 20, children: [
-        HpTitle(l.questionTitle),
-        HpSub(l.questionSub),
+        Text(l.questionTitle, style: HpText.s(c.text, 30, FontWeight.w800, ls: -0.6)),
         qs.when(
           loading: () => DotsLabel(l.loaderSearching),
           error: (_, __) => HpSub(l.questionsEmpty),
           data: (list) {
             if (idx >= list.length) return HpSub(l.questionsEmpty);
             final q = list[idx];
+            final tileW = (MediaQuery.sizeOf(context).width - 50) / 2;
+            Widget tile((String, String, IconData, Color) t) {
+              final on = type == t.$1;
+              return SizedBox(
+                width: tileW,
+                child: Material(
+                  color: on ? t.$4.withValues(alpha: 0.14) : c.surface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: on ? t.$4 : c.line, width: on ? 2 : 1)),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () => setState(() => type = t.$1),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                      child: Row(spacing: 12, children: [Icon(t.$3, color: t.$4, size: 24), Expanded(child: Text(t.$2, style: HpText.s(c.text, 16, FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis))]),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            final opts = [for (final o in q.options) if (o != 'noise' && o != 'not_sure' && o != 'nothing') o];
+            final groups = <String, List<String>>{};
+            for (final k in opts) {
+              groups.putIfAbsent(tax?.items[k]?.group ?? 'other', () => []).add(k);
+            }
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: [
-              HpCard(padding: 12, child: SizedBox(height: 120, child: CustomPaint(painter: WavePainter(q.wave, c.amber, c.line), size: Size.infinite))),
-              Builder(builder: (context) {
-                final opts = [for (final o in q.options) if (o != 'noise' && o != 'not_sure' && o != 'nothing') o];
-                final main = opts.take(6).toList();
-                final rest = opts.skip(6).toList();
-                Widget card(String k) => SizedBox(
-                      width: (MediaQuery.sizeOf(context).width - 50) / 2,
-                      child: HpCard(
-                        radius: 16,
-                        border: true,
-                        padding: 14,
-                        onTap: () => _answer(q, k),
-                        child: Row(spacing: 10, children: [HpDot(toneOf(k), size: 10), Expanded(child: Text(nameOf(k), style: HpText.s(c.text, 14, FontWeight.w600)))]),
+              Text('${context.tr('Удар', 'Zarba')} · ${q.speedKmh.round()} ${l.kmh}', style: HpText.s(c.muted, 14, FontWeight.w500)),
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: c.line)),
+                child: Column(spacing: 6, children: [
+                  SizedBox(height: 108, child: CustomPaint(painter: WavePainter(q.wave, c.amber, c.line), size: Size.infinite)),
+                  Row(children: [
+                    Text('−1,5 ${context.tr('с', 's')}', style: HpText.s(c.muted, 12, FontWeight.w500)),
+                    const Spacer(),
+                    Text(context.tr('удар', 'zarba'), style: HpText.s(c.amberText, 12, FontWeight.w700)),
+                    const Spacer(),
+                    Text('+1,5 ${context.tr('с', 's')}', style: HpText.s(c.muted, 12, FontWeight.w500)),
+                  ]),
+                ]),
+              ),
+              Wrap(spacing: 10, runSpacing: 10, children: [for (final t in tiles) tile(t)]),
+              if (type == 'pothole') ...[
+                Text(context.tr('Глубина', 'Chuqurlik'), style: HpText.s(c.muted, 14, FontWeight.w600)),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.line)),
+                  child: Row(children: [
+                    for (final d in [('light', context.tr('Лёгкая', 'Yengil')), ('mid', context.tr('Средняя', 'Oʻrtacha')), ('deep', context.tr('Глубокая', 'Chuqur'))])
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => depth = d.$1),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 160),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(color: depth == d.$1 ? c.amber : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+                            alignment: Alignment.center,
+                            child: Text(d.$2, style: HpText.s(depth == d.$1 ? c.inverse : c.muted, 15, FontWeight.w700)),
+                          ),
+                        ),
                       ),
-                    );
-                final groups = <String, List<String>>{};
-                for (final k in rest) {
-                  groups.putIfAbsent(tax?.items[k]?.group ?? 'other', () => []).add(k);
-                }
-                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 12, children: [
-                  Wrap(spacing: 10, runSpacing: 10, children: [for (final k in main) card(k)]),
-                  if (rest.isNotEmpty) HpButton(more ? l.optLess : l.optMore, kind: HpButtonKind.secondary, onPressed: () => setState(() => more = !more)),
-                  if (more)
-                    for (final g in groups.entries) ...[
-                      Text(isUz ? (tax?.groups[g.key]?.uz ?? g.key) : (tax?.groups[g.key]?.ru ?? g.key), style: HpText.s(c.muted, 13, FontWeight.w600)),
-                      Wrap(spacing: 10, runSpacing: 10, children: [for (final k in g.value) card(k)]),
-                    ],
-                ]);
-              }),
-              HpButton(l.optNothing, kind: HpButtonKind.secondary, onPressed: () => _answer(q, 'nothing')),
-              HpButton(l.optNotSure, kind: HpButtonKind.secondary, onPressed: () => _answer(q, 'not_sure')),
+                  ]),
+                ),
+              ],
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: c.info.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16)),
+                child: Row(spacing: 12, children: [
+                  Icon(Icons.lock_outline_rounded, color: c.info, size: 22),
+                  Expanded(child: Text(context.tr('Ответ доступен, когда машина стоит. За рулём вопросы не показываем.', 'Javob mashina turganda mavjud. Rul ortida savollarni koʻrsatmaymiz.'), style: HpText.s(c.text, 13, FontWeight.w500, h: 1.35))),
+                ]),
+              ),
+              HpButton(context.tr('Отправить', 'Yuborish'), loading: sending, onPressed: type == null ? null : () => _answer(q, _key())),
+              Row(children: [
+                Expanded(child: TextButton(onPressed: () => _answer(q, 'nothing'), child: Text(l.optNothing, style: HpText.s(c.muted, 14, FontWeight.w600)))),
+                Expanded(child: TextButton(onPressed: () => setState(() => more = !more), child: Text(more ? l.optLess : context.tr('Другой вариант', 'Boshqa variant'), style: HpText.s(c.amberText, 14, FontWeight.w700)))),
+              ]),
+              if (more)
+                for (final g in groups.entries) ...[
+                  Text(isUz ? (tax?.groups[g.key]?.uz ?? g.key) : (tax?.groups[g.key]?.ru ?? g.key), style: HpText.s(c.muted, 13, FontWeight.w600)),
+                  Wrap(spacing: 10, runSpacing: 10, children: [
+                    for (final k in g.value)
+                      SizedBox(width: tileW, child: HpCard(radius: 16, border: true, padding: 14, onTap: () => _answer(q, k), child: Text(nameOf(k), style: HpText.s(c.text, 14, FontWeight.w600)))),
+                  ]),
+                ],
             ]);
           },
         ),
@@ -491,49 +564,110 @@ class WavePainter extends CustomPainter {
 // ───────────────────────── Профиль ─────────────────────────
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  /// Уровень водителя по пройденным километрам: название и порог следующего уровня.
+  (String, String, double) _level(BuildContext context, double km) {
+    if (km < 50) return (context.tr('Новичок', 'Yangi'), context.tr('Водитель', 'Haydovchi'), 50);
+    if (km < 300) return (context.tr('Водитель', 'Haydovchi'), context.tr('Следопыт', 'Izquvar'), 300);
+    if (km < 1000) return (context.tr('Следопыт', 'Izquvar'), context.tr('Мастер дорог', 'Yoʻl ustasi'), 1000);
+    return (context.tr('Мастер дорог', 'Yoʻl ustasi'), '', 1000);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final c = context.hp;
     final tot = ref.watch(totalsProvider);
     final nick = ref.watch(nicknameProvider);
-    Widget stat(String v, String t) => Expanded(
-          child: HpCard(
-            padding: 16,
-            child: Column(spacing: 2, children: [
-              Text(v, style: HpText.s(c.amberText, 26, FontWeight.w700, ls: -0.26)),
-              Text(t, style: HpText.s(c.muted, 12, FontWeight.w500)),
+    final s = ref.watch(settingsProvider);
+    final confirmed = ref.watch(myStatsProvider).value?.confirmed;
+    final (lvl, next, goal) = _level(context, tot.km);
+    Widget stat(String v, String t, Color col) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+            decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: c.line)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
+              FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(v, style: HpText.s(col, 30, FontWeight.w800, ls: -0.6))),
+              Text(t, style: HpText.s(c.muted, 13, FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
             ]),
           ),
         );
-    return HpBody(children: [
-      Column(spacing: 12, children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle, border: Border.all(color: c.amber, width: 2)),
-          alignment: Alignment.center,
-          child: const HpSvg('logo52', size: 52),
+    Widget group(String title, List<Widget> rows) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+          Padding(padding: const EdgeInsets.only(left: 4), child: Text(title, style: HpText.s(c.muted, 13, FontWeight.w700, ls: 0.4))),
+          Container(
+            decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(22), border: Border.all(color: c.line)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) Divider(height: 1, indent: 70, color: c.line),
+                rows[i],
+              ],
+            ]),
+          ),
+        ]);
+    Widget row(IconData icon, Color col, String title, String sub, VoidCallback onTap, {String? badge}) => InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(spacing: 14, children: [
+              Container(width: 40, height: 40, decoration: BoxDecoration(color: col.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: col, size: 22)),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                Text(title, style: HpText.s(c.text, 16, FontWeight.w600)),
+                Text(sub, style: HpText.s(c.muted, 13, FontWeight.w400), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ])),
+              if (badge != null) Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3), decoration: BoxDecoration(color: c.amber, borderRadius: BorderRadius.circular(999)), child: Text(badge, style: HpText.s(c.inverse, 12, FontWeight.w800))),
+              Icon(Icons.chevron_right_rounded, color: c.muted),
+            ]),
+          ),
+        );
+    return HpBody(top: 12, children: [
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: c.line),
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c.amberDim, c.surface]),
         ),
-        Text(nick ?? l.profileNoNick, style: HpText.s(c.text, 22, FontWeight.w700, ls: -0.22)),
-        Text(l.profileAnon, style: HpText.s(c.muted, 13, FontWeight.w400)),
-      ]),
+        child: Column(spacing: 16, children: [
+          Row(spacing: 16, children: [
+            Container(width: 72, height: 72, decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle, border: Border.all(color: c.amber, width: 2)), alignment: Alignment.center, child: const HpSvg('logo52', size: 40)),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 4, children: [
+              Text(nick ?? l.profileNoNick, style: HpText.s(c.text, 22, FontWeight.w800, ls: -0.3), maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(s.carName ?? context.tr('Автомобиль не указан', 'Avtomobil koʻrsatilmagan'), style: HpText.s(c.muted, 14, FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ])),
+          ]),
+          Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 8, children: [
+            Row(children: [
+              Text(lvl, style: HpText.s(c.amberText, 14, FontWeight.w800)),
+              const SizedBox(width: 12),
+              Expanded(child: Text(next.isEmpty ? context.tr('Максимальный уровень', 'Eng yuqori daraja') : '${fmtKm(tot.km)} / ${goal.round()} ${context.tr('км до', 'km gacha')} «$next»', textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: HpText.s(c.muted, 12, FontWeight.w500))),
+            ]),
+            HpProgress(next.isEmpty ? 1.0 : (tot.km / goal).clamp(0.0, 1.0), c.amber),
+          ]),
+        ]),
+      ),
       Row(spacing: 10, children: [
-        stat('${tot.potholes}', l.statFound),
-        stat(ref.watch(myStatsProvider).value?.confirmed.toString() ?? '—', l.statConfirmed),
-        stat(fmtKm(tot.km), l.statKm),
+        stat('${tot.potholes}', context.tr('Находок', 'Topilmalar'), c.crater),
+        stat(confirmed?.toString() ?? '—', l.statConfirmed, c.smooth),
+        stat(fmtKm(tot.km), l.statKm, c.amberText),
       ]),
-      HpListItem(tone: Tone.amber, title: l.myFinds, subtitle: l.myFindsSub(tot.potholes), onTap: () => context.push('/my-map')),
-      HpListItem(tone: Tone.smooth, title: l.tripsHistory, subtitle: '${tot.trips}', onTap: () => context.push('/trips')),
-      HpListItem(tone: Tone.info, title: l.vehicleTitle, subtitle: l.vehicleSuspension, onTap: () => context.push('/vehicle')),
-      HpListItem(tone: Tone.minor, title: context.tr('Подвеска', 'Osma'), subtitle: context.tr('Ямы на ваших поездках за месяц', 'Oylik safarlaringizdagi choʻqqilar'), onTap: () => context.push('/suspension')),
-      HpListItem(tone: Tone.smooth, title: context.tr('Команды «Холи»', 'Holi buyruqlari'), subtitle: context.tr('Что можно сказать вслух', 'Ovoz chiqarib nima deyish mumkin'), onTap: () => context.push('/commands')),
-      Consumer(builder: (context, ref, _) {
-        ref.watch(notesRevProvider);
-        final n = ref.read(dbProvider).unreadNotes();
-        return HpListItem(tone: Tone.amber, title: context.tr('Уведомления', 'Bildirishnomalar'), subtitle: n == 0 ? context.tr('Новых нет', 'Yangilari yoʻq') : context.tr('Новых: $n', 'Yangilari: $n'), onTap: () => context.push('/notifications'));
-      }),
-      HpListItem(tone: Tone.muted, title: l.settingsTitle, subtitle: l.settingsSub, onTap: () => context.push('/settings')),
+      group(context.tr('МОИ ДАННЫЕ', 'MENING MAʼLUMOTLARIM'), [
+        row(Icons.place_outlined, c.crater, l.myFinds, l.myFindsSub(tot.potholes), () => context.push('/my-map')),
+        row(Icons.route_outlined, c.smooth, l.tripsHistory, '${tot.trips} ${context.tr('поездок', 'safar')}', () => context.push('/trips')),
+        row(Icons.directions_car_outlined, c.info, l.vehicleTitle, s.carName ?? l.vehicleSuspension, () => context.push('/vehicle')),
+        row(Icons.compare_arrows_rounded, c.warn, context.tr('Подвеска', 'Osma'), context.tr('Удары на ваших поездках за месяц', 'Oylik safarlardagi zarbalar'), () => context.push('/suspension')),
+      ]),
+      group(context.tr('ПОМОЩНИК', 'YORDAMCHI'), [
+        row(Icons.mic_none_rounded, c.smooth, context.tr('Команды «Холи»', 'Holi buyruqlari'), context.tr('Что можно сказать вслух', 'Ovoz chiqarib nima deyish mumkin'), () => context.push('/commands')),
+        Consumer(builder: (context, ref, _) {
+          ref.watch(notesRevProvider);
+          final n = ref.read(dbProvider).unreadNotes();
+          return row(Icons.notifications_none_rounded, c.amber, context.tr('Уведомления', 'Bildirishnomalar'), n == 0 ? context.tr('Новых нет', 'Yangilari yoʻq') : context.tr('Новых: $n', 'Yangilari: $n'), () => context.push('/notifications'), badge: n == 0 ? null : '$n');
+        }),
+      ]),
+      group(context.tr('ПРИЛОЖЕНИЕ', 'ILOVA'), [
+        row(Icons.settings_outlined, c.muted, l.settingsTitle, l.settingsSub, () => context.push('/settings')),
+      ]),
     ]);
   }
 }
