@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_activity_recognition/flutter_activity_recognition.dart' as ar;
 import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -57,7 +58,7 @@ class RealSensorSource implements SensorSource {
     if (_started) return;
     _started = true;
     _startGps(active: false);
-    try {
+    if (!kIsWeb) try {
       _actSub = ar.FlutterActivityRecognition.instance.activityStream.listen((a) {
         _act.add(switch (a.type) {
           ar.ActivityType.IN_VEHICLE => ActivityKind.automotive,
@@ -109,7 +110,7 @@ class RealSensorSource implements SensorSource {
     _posSub?.cancel();
     final t = _texts();
     final LocationSettings settings;
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       settings = AndroidSettings(
         accuracy: active ? LocationAccuracy.best : LocationAccuracy.medium,
         distanceFilter: active ? 0 : 20,
@@ -122,7 +123,7 @@ class RealSensorSource implements SensorSource {
           enableWakeLock: active,
         ),
       );
-    } else if (Platform.isIOS) {
+    } else if (!kIsWeb && Platform.isIOS) {
       settings = AppleSettings(
         accuracy: active ? LocationAccuracy.best : LocationAccuracy.medium,
         distanceFilter: active ? 0 : 25,

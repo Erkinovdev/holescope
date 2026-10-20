@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PermState {
@@ -23,7 +25,7 @@ abstract class PermissionService {
 }
 
 class DevicePermissionService implements PermissionService {
-  Permission get _motion => Platform.isIOS ? Permission.sensors : Permission.activityRecognition;
+  Permission get _motion => !kIsWeb && Platform.isIOS ? Permission.sensors : Permission.activityRecognition;
 
   @override
   Future<PermState> current() async => PermState(
@@ -86,4 +88,41 @@ class FakePermissionService implements PermissionService {
   Future<PermState> requestMotion() async => state;
   @override
   Future<bool> openSettings() async => true;
+}
+
+/// Браузер (веб-версия): геолокацию спрашивает сам браузер, датчики движения работают, где браузер их отдаёт.
+class WebPermissionService implements PermissionService {
+  Future<bool> _loc() async {
+    try {
+      final p = await Geolocator.checkPermission();
+      return p == LocationPermission.always || p == LocationPermission.whileInUse;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<PermState> current() async => PermState(motion: true, location: await _loc(), always: false, notifications: false);
+
+  @override
+  Future<PermState> requestAll() async => requestLocation();
+
+  @override
+  Future<PermState> requestLocation() async {
+    var ok = false;
+    var denied = false;
+    try {
+      var p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied) p = await Geolocator.requestPermission();
+      ok = p == LocationPermission.always || p == LocationPermission.whileInUse;
+      denied = p == LocationPermission.deniedForever;
+    } catch (_) {}
+    return PermState(motion: true, location: ok, always: false, notifications: false, permanentlyDenied: denied);
+  }
+
+  @override
+  Future<PermState> requestMotion() async => PermState(motion: true, location: await _loc(), always: false, notifications: false);
+
+  @override
+  Future<bool> openSettings() async => false;
 }

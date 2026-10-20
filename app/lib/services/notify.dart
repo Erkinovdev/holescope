@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -120,4 +121,4 @@ Future<bool> postWeeklyDigest(NotificationHub hub, LocalDb db, AppSettings s, Da
 /// Приложение сейчас на экране?
 bool appIsForeground() => WidgetsBinding.instance.lifecycleState == null || WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
 
-bool get platformSupportsNotifications => Platform.isAndroid || Platform.isIOS;
+bool get platformSupportsNotifications => !kIsWeb && (Platform.isAndroid || Platform.isIOS);

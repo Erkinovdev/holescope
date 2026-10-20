@@ -49,7 +49,7 @@ final engineProvider = Provider<RecorderEngine>((ref) {
     settings: () => ref.read(settingsProvider),
     rawDir: ref.watch(supportDirProvider) == null ? null : '${ref.watch(supportDirProvider)}/raw',
     recoveryFile: ref.watch(supportDirProvider) == null ? null : File('${ref.watch(supportDirProvider)}/current_trip.bin'),
-    platform: Platform.isIOS ? 'ios' : 'android',
+    platform: kIsWeb ? 'web' : (Platform.isIOS ? 'ios' : 'android'),
     uploadAllowed: () async {
       if (!ref.read(settingsProvider).wifiOnly) return true;
       try {
@@ -109,7 +109,7 @@ final voiceRecognizerProvider = Provider<VoiceRecognizer>((ref) {
       await eng.auth.ensureRegistered(eng.api, platform: eng.platform);
       return eng.api.transcribe(wav, lang);
     }),
-    mode: () => switch (ref.read(settingsProvider).holiEngine) {
+    mode: () => kIsWeb ? RecognizerMode.device : switch (ref.read(settingsProvider).holiEngine) {
       'device' => RecognizerMode.device,
       'cloud' => RecognizerMode.cloud,
       _ => RecognizerMode.auto,
@@ -169,7 +169,7 @@ final holiControllerProvider = FutureProvider<HoliController>((ref) async {
   return ctrl;
 });
 
-final permissionServiceProvider = Provider<PermissionService>((ref) => DevicePermissionService());
+final permissionServiceProvider = Provider<PermissionService>((ref) => kIsWeb ? WebPermissionService() : DevicePermissionService());
 
 final apiProvider = Provider<ApiClient>((ref) => ApiClient(AppConfig.resolveApiBase()));
 

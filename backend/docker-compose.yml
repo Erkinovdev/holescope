@@ -80,6 +80,7 @@ services:
       DOMAIN: ${DOMAIN:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../webapp:/srv/app:ro
       - caddy_data:/data
 
 volumes:

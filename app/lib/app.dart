@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -102,6 +103,10 @@ class _HoleScopeAppState extends ConsumerState<HoleScopeApp> with WidgetsBinding
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (kIsWeb) {
+        final uz = ref.read(settingsProvider).locale?.languageCode == 'uz';
+        ref.read(bannerProvider.notifier).show(NoteBanner('service', uz ? 'Veb-versiya (sinov uchun)' : 'Веб-версия для проверки', uz ? 'Fonda yozuv va bildirishnomalar ishlamaydi.' : 'Запись в фоне и системные уведомления в браузере недоступны.'));
+      }
       final s = ref.read(settingsProvider);
       unawaited(postWeeklyDigest(ref.read(notificationHubProvider), ref.read(dbProvider), s, DateTime.now(), uz: s.locale?.languageCode == 'uz'));
     });

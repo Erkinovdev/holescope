@@ -1,6 +1,11 @@
 import 'dart:convert';
 
-import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3/common.dart';
+
+import 'db_open_native.dart' if (dart.library.js_interop) 'db_open_web.dart';
+
+/// Подготовка базы на платформе (в вебе — загрузка sqlite3.wasm). Вызывать один раз до первого открытия.
+Future<void> initLocalDb() => initDbPlatform();
 
 /// Запись очереди отправки.
 class OutboxItem {
@@ -57,10 +62,10 @@ class LocalDb {
     _migrate();
   }
 
-  factory LocalDb.open(String path) => LocalDb(sqlite3.open(path));
-  factory LocalDb.memory() => LocalDb(sqlite3.openInMemory());
+  factory LocalDb.open(String path) => LocalDb(openDbFile(path));
+  factory LocalDb.memory() => LocalDb(openDbMemory());
 
-  final Database _db;
+  final CommonDatabase _db;
 
   static const _schemaVersion = 2;
 

@@ -1,4 +1,15 @@
 {$DOMAIN} {
 	encode gzip
-	reverse_proxy admin:80
+
+	# веб-версия приложения для проверки (iPhone без установки): /app/
+	redir /app /app/ 308
+	handle_path /app/* {
+		root * /srv/app
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	handle {
+		reverse_proxy admin:80
+	}
 }
