@@ -71,7 +71,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <ToastProvider>
         <AuthProvider>
-          <BrowserRouter>
+          <BrowserRouter basename="/panel">
             <Gate />
           </BrowserRouter>
         </AuthProvider>

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Holescope — увидь каждую яму до удара</title>
+<meta name="description" content="Holescope превращает телефоны водителей Ташкента в сеть датчиков: находит ямы, предупреждает за 150 метров и помогает подать жалобу в один клик.">
+<meta name="theme-color" content="#0b0d12">
+<meta property="og:title" content="Holescope — See every hole before you hit it">
+<meta property="og:description" content="Карта ям Ташкента, голосовые предупреждения и жалобы в один клик.">
+<link rel="icon" href="/img/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="cursor-glow" id="glow"></div>
+
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Holescope"><img src="/img/logo.svg" alt="" width="30" height="30"><span>Holescope</span></a>
+  <nav class="links">
+    <a href="#how">Как работает</a>
+    <a href="#features">Возможности</a>
+    <a href="#city">Город</a>
+    <a href="#lab">Лаборатория</a>
+    <a href="#holi">Холи</a>
+    <a href="#roadmap">Путь</a>
+  </nav>
+  <a class="btn btn-sm" href="#download">Скачать</a>
+</header>
+
+<main id="top">
+<!-- HERO -->
+<section class="hero">
+  <canvas id="road" aria-hidden="true"></canvas>
+  <div class="hero-fade"></div>
+  <div class="hero-inner">
+    <div class="pill reveal"><span class="live-dot"></span> Живая сеть датчиков · Ташкент</div>
+    <h1 class="split" data-split>Увидь каждую яму<br><em>до удара</em></h1>
+    <p class="lead reveal d2">Телефоны водителей чувствуют дорогу подвеской. Holescope собирает удары в общую карту, предупреждает за 150 метров и подаёт жалобу в один клик.</p>
+    <div class="cta reveal d3">
+      <a class="btn btn-lg magnetic" href="#download">Скачать приложение <i>→</i></a>
+      <a class="btn btn-ghost btn-lg" href="/app/">Открыть в браузере</a>
+    </div>
+    <div class="hero-stats reveal d4">
+      <div><b data-count data-live="found">119</b><span>ям найдено за неделю</span></div>
+      <div><b data-count data-live="km" data-dec="1">43.5</b><span>км дорог проверено</span></div>
+      <div><b data-count data-live="drivers">1</b><span>водителей в сети</span></div>
+    </div>
+  </div>
+  <a class="scroll-hint" href="#how" aria-label="Вниз"><span></span></a>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee" aria-hidden="true">
+  <div class="track">
+    <span>Акселерометр</span><i>◆</i><span>Гироскоп</span><i>◆</i><span>GPS ±3 м</span><i>◆</i><span>Предупреждение за 150 м</span><i>◆</i><span>Классы ровности A–E</span><i>◆</i><span>Голосовой помощник Холи</span><i>◆</i><span>Русский и узбекский</span><i>◆</i><span>Жалоба в один клик</span><i>◆</i>
+    <span>Акселерометр</span><i>◆</i><span>Гироскоп</span><i>◆</i><span>GPS ±3 м</span><i>◆</i><span>Предупреждение за 150 м</span><i>◆</i><span>Классы ровности A–E</span><i>◆</i><span>Голосовой помощник Холи</span><i>◆</i><span>Русский и узбекский</span><i>◆</i><span>Жалоба в один клик</span><i>◆</i>
+  </div>
+</div>
+
+<!-- HOW -->
+<section class="how" id="how">
+  <div class="how-grid">
+    <div class="how-steps">
+      <p class="eyebrow reveal">Как это работает</p>
+      <h2 class="reveal">Три шага от удара<br>до исправленной ямы</h2>
+      <div class="step active" data-step="0">
+        <span class="num">01</span>
+        <div><h3>Телефон чувствует</h3><p>Акселерометр, гироскоп и GPS работают в фоне. Алгоритм отделяет яму от люка, лежачего полицейского и рельсов и оценивает силу удара с поправкой на скорость.</p></div>
+      </div>
+      <div class="step" data-step="1">
+        <span class="num">02</span>
+        <div><h3>Сеть подтверждает</h3><p>Один удар может быть случайным. Яму подтверждают проезды разных водителей в одном месте. Если проезжают, а удара нет, яма считается заделанной.</p></div>
+      </div>
+      <div class="step" data-step="2">
+        <span class="num">03</span>
+        <div><h3>Город исправляет</h3><p>Предупреждение за 150 метров, жалоба с координатами и данными датчиков, рейтинг худших улиц. Цепочка «Нашли → Подали → Исправили» видна всем.</p></div>
+      </div>
+    </div>
+    <div class="how-phone">
+      <div class="phone tilt" id="phone">
+        <div class="notch"></div>
+        <div class="screen s0 on">
+          <div class="scr-title">Запись идёт</div>
+          <svg class="wave" viewBox="0 0 300 120" preserveAspectRatio="none"><path id="wavePath" fill="none" stroke="#ffb020" stroke-width="2.5" stroke-linejoin="round"/></svg>
+          <div class="chips"><span>59 Гц</span><span>GPS ±3 м</span><span>42 км/ч</span></div>
+          <div class="hit-card"><i class="dot r"></i><div><b>Удар 8,4 м/с²</b><small>Яма · достоверность 92%</small></div></div>
+        </div>
+        <div class="screen s1">
+          <div class="scr-title">Карта ям</div>
+          <div class="mapbox" id="mapbox"></div>
+          <div class="hit-card"><i class="dot o"></i><div><b>Навои, 24</b><small>Подтверждено 7 водителями</small></div></div>
+        </div>
+        <div class="screen s2">
+          <div class="scr-title">Снизьте скорость</div>
+          <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="r-bg"/><circle cx="60" cy="60" r="52" class="r-fg" id="ringFg"/></svg><div class="ring-t"><b id="ringM">150</b><small>м до ямы</small></div></div>
+          <div class="hit-card"><i class="dot r"></i><div><b>Глубокая яма</b><small>Правая полоса · до 30 км/ч</small></div></div>
+        </div>
+      </div>
+      <div class="phone-glow"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <p class="eyebrow reveal">Возможности</p>
+  <h2 class="reveal">Всё, что нужно водителю<br>и городу</h2>
+  <div class="bento">
+    <article class="card spot span2">
+      <div class="ic">◉</div>
+      <h3>Общая карта ям</h3>
+      <p>Кластеры от всех водителей, статусы «подтверждена» и «заделана», поиск по улице или району.</p>
+      <div class="mini-map" id="miniMap"></div>
+    </article>
+    <article class="card spot">
+      <div class="ic">♪</div>
+      <h3>Голосовой помощник Холи</h3>
+      <p>«Яма через 150 метров, снизьте до 30». Без рук, на русском и узбекском.</p>
+    </article>
+    <article class="card spot">
+      <div class="ic">⌁</div>
+      <h3>Режим «Контракам»</h3>
+      <p>Предупреждения без маршрута, как оповещения о камерах. Навигатор не нужен.</p>
+    </article>
+    <article class="card spot">
+      <div class="ic">✉</div>
+      <h3>Жалоба в один клик</h3>
+      <p>Текст, координаты и данные датчиков готовы автоматически. Xalq Nazorati и Минтранс.</p>
+    </article>
+    <article class="card spot span2">
+      <div class="ic">▤</div>
+      <h3>Ровность дорог A–E</h3>
+      <p>Индекс на каждые 50 метров. Видно, где дорога ровная, а где разбитая, и как это меняется.</p>
+      <div class="grades"><span style="--c:#3ecf8e">A</span><span style="--c:#8fd96b">B</span><span style="--c:#ffd24d">C</span><span style="--c:#ff9a3c">D</span><span style="--c:#ff5d5d">E</span></div>
+    </article>
+    <article class="card spot">
+      <div class="ic">☺</div>
+      <h3>Анонимность</h3>
+      <p>Ник вроде «Тихий Сокол #4821». Без номера и почты, первые и последние 200 м поездки обрезаются.</p>
+    </article>
+    <article class="card spot">
+      <div class="ic">⚑</div>
+      <h3>Челленджи районов</h3>
+      <p>«Подтвердить 200 ям в Чиланзаре». Рейтинг водителей и отчёт недели.</p>
+    </article>
+  </div>
+</section>
+
+<!-- CITY (live) -->
+<section class="city" id="city">
+  <p class="eyebrow reveal">Город в реальном времени</p>
+  <h2 class="reveal">Качество дорог Ташкента</h2>
+  <p class="sub reveal">Данные подтягиваются прямо с сервера Holescope.</p>
+  <div class="city-grid">
+    <div class="panel reveal">
+      <div class="panel-h"><h3>Районы по баллу</h3><span class="tag" id="cityScore">…</span></div>
+      <div class="bars" id="districts"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+    </div>
+    <div class="panel reveal d2">
+      <div class="panel-h"><h3>Худшие улицы</h3><span class="tag">ям на км · 30 дней</span></div>
+      <ol class="streets" id="streets"><li class="skeleton"></li><li class="skeleton"></li><li class="skeleton"></li></ol>
+    </div>
+  </div>
+  <div class="chain reveal">
+    <div class="chain-line"><i id="chainFill"></i></div>
+    <div class="chain-n"><span>Нашли</span><b data-count data-live="found">119</b></div>
+    <div class="chain-n"><span>Подали</span><b data-count data-live="complaints">1</b></div>
+    <div class="chain-n"><span>Исправили</span><b data-count data-live="fixed">0</b></div>
+  </div>
+</section>
+
+<!-- LAB -->
+<section class="lab" id="lab">
+  <div class="lab-grid">
+    <div>
+      <p class="eyebrow reveal">Лаборатория</p>
+      <h2 class="reveal">Почему скорость<br>меняет силу удара</h2>
+      <p class="sub reveal">Одна и та же яма на 10 км/ч почти не чувствуется, а на 60 бьёт по подвеске. Подвигайте ползунок. Так алгоритм считает безопасную скорость.</p>
+      <label class="slider reveal">
+        <span>Скорость <b id="spdV">40</b> км/ч</span>
+        <input type="range" id="spd" min="5" max="90" value="40">
+      </label>
+      <div class="lab-out reveal">
+        <div><small>Сила удара</small><b id="labPeak">—</b></div>
+        <div><small>Совет Холи</small><b id="labAdvice">—</b></div>
+      </div>
+    </div>
+    <div class="scope reveal d2"><canvas id="scope"></canvas><span class="scope-tag">вертикальное ускорение, м/с²</span></div>
+  </div>
+</section>
+
+<!-- HOLI -->
+<section class="holi" id="holi">
+  <div class="holi-wrap">
+    <div class="orb" id="orb"><span></span><span></span><span></span><div class="orb-core"></div></div>
+    <div class="holi-text">
+      <p class="eyebrow reveal">Голосовой помощник</p>
+      <h2 class="reveal">Холи слушает<br>пока вы за рулём</h2>
+      <p class="sub reveal">Скажите «Холи, яма» сразу после удара. Помощник отметит место, а на остановке задаст один вопрос. Руки на руле, глаза на дороге.</p>
+      <div class="dialog reveal" id="dialog"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section class="roadmap" id="roadmap">
+  <p class="eyebrow reveal">Путь продукта</p>
+  <h2 class="reveal">От логгера в Safari<br>до платформы города</h2>
+  <div class="rail" id="rail">
+    <div class="rail-line"><i id="railFill"></i></div>
+    <div class="rail-item"><b>v0.1</b><h3>Сбор данных</h3><p>PWA для iPhone: сырые датчики, ручные метки, CSV для подбора порога.</p><span class="st done">готово</span></div>
+    <div class="rail-item"><b>v0.2</b><h3>Приложение</h3><p>Flutter, запись в фоне, онбординг и «Моя карта».</p><span class="st done">готово</span></div>
+    <div class="rail-item"><b>v1.0</b><h3>Общая карта</h3><p>Кластеры, подтверждения, анонимный профиль.</p><span class="st done">готово</span></div>
+    <div class="rail-item"><b>v1.1</b><h3>Со-пилот</h3><p>Голос, сигнал, HUD и настройки машины.</p><span class="st done">готово</span></div>
+    <div class="rail-item"><b>v1.2</b><h3>Давление</h3><p>Жалобы, рейтинг худших улиц, статус обращения.</p><span class="st done">готово</span></div>
+    <div class="rail-item"><b>v1.3</b><h3>Маршруты</h3><p>Оценка и выбор самого ровного пути, уведомления.</p><span class="st next">в работе</span></div>
+    <div class="rail-item"><b>v2.0</b><h3>Платформа города</h3><p>Дашборд по районам, челленджи, отчёты и открытые данные.</p><span class="st next">в работе</span></div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="download" id="download">
+  <div class="dl-card">
+    <div class="dl-bg"></div>
+    <img class="dl-logo" src="/img/logo.svg" alt="" width="84" height="84">
+    <h2>Поставь Holescope<br>и поехали</h2>
+    <p>Версия 2.1.0 · бесплатно · без номера телефона</p>
+    <div class="dl-btns">
+      <a class="btn btn-lg magnetic" href="/dl/holescope.apk" download>Android · APK</a>
+      <a class="btn btn-ghost btn-lg magnetic" href="/app/">iPhone · открыть в Safari</a>
+    </div>
+    <small>На iPhone: «Поделиться» → «На экран Домой», и значок появится как у обычного приложения.</small>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <a class="brand" href="#top"><img src="/img/logo.svg" alt="" width="24" height="24"><span>Holescope</span></a>
+  <span>See every hole before you hit it.</span>
+  <a href="/panel/">Вход для команды</a>
+</footer>
+
+<script src="/site.js"></script>
+</body>
+</html>

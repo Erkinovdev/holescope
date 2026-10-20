@@ -9,7 +9,16 @@
 		file_server
 	}
 
-	handle {
+	# админка (/panel), API, статика Django, ассеты админки
+	@backend path /panel /panel/* /api/* /django-admin/* /static/* /assets/* /media/*
+	handle @backend {
 		reverse_proxy admin:80
+	}
+
+	# сайт-визитка на корне
+	handle {
+		root * /srv/site
+		header Cache-Control "no-cache"
+		file_server
 	}
 }
