@@ -360,9 +360,9 @@ class _BannerHostState extends ConsumerState<_BannerHost> {
                 constraints: const BoxConstraints(maxWidth: 480),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Color.alphaBlend(col.withValues(alpha: .12), c.surface), borderRadius: BorderRadius.circular(18), border: Border.all(color: col.withValues(alpha: .7)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .3), blurRadius: 16)]),
-                child: Row(spacing: 10, children: [
+                child: Row(mainAxisSize: MainAxisSize.min, spacing: 10, children: [
                   Icon(Icons.notifications_active_outlined, color: col, size: 22),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(b.title, style: HpText.s(c.text, 14, FontWeight.w700)), if (b.body.isNotEmpty) Text(b.body, style: HpText.s(c.muted, 12, FontWeight.w400))])),
+                  Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(b.title, style: HpText.s(c.text, 14, FontWeight.w700)), if (b.body.isNotEmpty) Text(b.body, style: HpText.s(c.muted, 12, FontWeight.w400))])),
                 ]),
               ),
             ),

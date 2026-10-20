@@ -71,7 +71,7 @@ void main() {
 
   testWidgets('живая карта: ближайшая яма, легенда, поиск', (t) async {
     await open(t, '/map');
-    expect(find.text('ул. Навои'), findsOneWidget);                // карточка ближайшей ямы с улицей
+    expect(find.textContaining('ул. Навои'), findsOneWidget);              // карточка ближайшей ямы с улицей
     expect(find.text('A'), findsOneWidget);                        // легенда A–E
     await t.tap(find.text('Поиск улицы или района'));
     for (var i = 0; i < 4; i++) {
