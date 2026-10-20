@@ -4,7 +4,7 @@
 |---|---|---|
 | `holescope.apk` | Телефон Android (7.0 и новее) | `uz.holescope.holescope` |
 | `holescope-monitor.apk` | **Штатный монитор автомобиля** (Android 9, широкий экран, например Geely Geometry E). Это отдельное приложение «Holescope Монитор»: горизонтальный экран, крупные кнопки, ночная тема, экран не гаснет | `uz.holescope.holescope.monitor` |
-| `holescope.ipa` | iPhone, без подписи (собирается на GitHub Actions только по слову «IPA»; версия 2.0 — прежняя) | — |
+| `holescope.ipa` | iPhone, без подписи (собирается на GitHub Actions только по слову «IPA»; версия 2.1.0) | — |
 
 Обе Android-сборки можно ставить на одно устройство одновременно: у них разные пакеты.
 
