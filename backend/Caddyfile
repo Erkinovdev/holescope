@@ -15,6 +15,22 @@
 		reverse_proxy admin:80
 	}
 
+	# векторные тайлы карты (planetiler, уже сжаты gzip), стили и шрифты подписей
+	handle /map/t/* {
+		root * /srv/site
+		header Content-Type application/x-protobuf
+		header Content-Encoding gzip
+		header Cache-Control "public, max-age=604800"
+		header Access-Control-Allow-Origin *
+		file_server
+	}
+	handle /map/* {
+		root * /srv/site
+		header Cache-Control "public, max-age=3600"
+		header Access-Control-Allow-Origin *
+		file_server
+	}
+
 	# сайт-визитка на корне
 	handle {
 		root * /srv/site

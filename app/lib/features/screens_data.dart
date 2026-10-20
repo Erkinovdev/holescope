@@ -49,11 +49,40 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
   final ctl = RoadMapController();
   List<ClusterDto> clusters = const [];
   bool centered = false;
+  String filter = 'all';
 
   @override
   void dispose() {
     ctl.dispose();
     super.dispose();
+  }
+
+  static const _filters = <(String, String, IconData)>[
+    ('all', 'Все', Icons.layers_outlined),
+    ('deep', 'Глубокие', Icons.trip_origin_rounded),
+    ('manholes', 'Люки', Icons.circle_outlined),
+    ('humps', 'Лежачие', Icons.show_chart_rounded),
+    ('rails', 'Рельсы', Icons.train_outlined),
+  ];
+
+  Future<void> _pickFilter() async {
+    final c = context.hp;
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 8),
+          for (final f in _filters)
+            ListTile(
+              leading: Icon(f.$3, color: f.$1 == filter ? c.amber : c.muted),
+              title: Text(f.$2, style: HpText.s(c.text, 16, FontWeight.w500)),
+              trailing: f.$1 == filter ? Icon(Icons.check_rounded, color: c.amber) : null,
+              onTap: () => Navigator.pop(context, f.$1),
+            ),
+        ]),
+      ),
+    );
+    if (v != null) setState(() => filter = v);
   }
 
   ClusterDto? _nearest() {
@@ -99,40 +128,127 @@ class _LiveMapScreenState extends ConsumerState<LiveMapScreen> {
       }
     }
     final near = _nearest();
-    return Column(children: [
-      Expanded(
-        child: Stack(children: [
-          Positioned.fill(child: RoadMapView(controller: ctl, onClusters: (v) => setState(() => clusters = v), onClusterTap: (cl) => context.push('/pothole/${cl.id}'))),
-          Positioned(
-            left: 16,
-            right: 16,
-            top: 16,
-            child: HpCard(
-              border: true,
-              padding: 14,
-              radius: 18,
-              onTap: _search,
-              child: Row(spacing: 10, children: [
-                HpSvg('search_icon', size: 22, tint: c.muted),
-                Expanded(child: Text(l.searchHint, style: HpText.s(c.muted, 15, FontWeight.w400))),
-                Semantics(
-                  button: true,
-                  label: l.notifTitle,
-                  child: GestureDetector(onTap: () => context.push('/notifications'), child: Icon(Icons.notifications_none_rounded, color: c.muted, size: 22)),
+    return Stack(children: [
+      Positioned.fill(child: RoadMapView(controller: ctl, filter: filter, onClusters: (v) => setState(() => clusters = v), onClusterTap: (cl) => context.push('/pothole/${cl.id}'))),
+      Positioned(
+        left: 16,
+        right: 16,
+        top: 12,
+        child: SafeArea(
+          bottom: false,
+          child: Column(spacing: 10, children: [
+            Row(spacing: 10, children: [
+              Expanded(
+                child: HpCard(
+                  border: true,
+                  padding: 14,
+                  radius: 18,
+                  onTap: _search,
+                  child: Row(spacing: 10, children: [
+                    HpSvg('search_icon', size: 22, tint: c.muted),
+                    Expanded(child: Text(l.searchHint, style: HpText.s(c.muted, 15, FontWeight.w400), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  ]),
                 ),
+              ),
+              Semantics(
+                button: true,
+                label: 'Фильтр',
+                child: Material(
+                  color: c.amber,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: _pickFilter,
+                    child: SizedBox(width: 52, height: 52, child: Icon(Icons.filter_alt_outlined, color: c.inverse, size: 24)),
+                  ),
+                ),
+              ),
+            ]),
+            SizedBox(
+              height: 40,
+              width: double.infinity,
+              child: ListView(scrollDirection: Axis.horizontal, clipBehavior: Clip.none, children: [
+                for (final f in _filters)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _FilterChip(label: f.$2, icon: f.$3, on: f.$1 == filter, onTap: () => setState(() => filter = f.$1)),
+                  ),
               ]),
             ),
-          ),
-          const Positioned(left: 16, top: 84, child: RoughnessLegend()),
-        ]),
+          ]),
+        ),
       ),
-      Padding(
-        padding: const EdgeInsets.all(16),
+      Positioned(left: 16, bottom: near == null ? 96 : 124, child: const RoughnessLegend(vertical: true)),
+      Positioned(
+        right: 16,
+        bottom: near == null ? 96 : 124,
+        child: _RoundBtn(
+          icon: Icons.my_location_rounded,
+          label: 'Моё место',
+          onTap: () {
+            final la = ctl.meLat, lo = ctl.meLon;
+            if (la != null && lo != null) ctl.moveTo(la, lo, mpp: 2.5);
+          },
+        ),
+      ),
+      Positioned(
+        left: 16,
+        right: 16,
+        bottom: 16,
         child: near == null
             ? HpCard(border: true, child: Text(l.noPotholesNearby, style: HpText.s(c.muted, 14, FontWeight.w500)))
             : _NearestCard(cluster: near, distanceM: _meters(ctl.meLat ?? ctl.lat, ctl.meLon ?? ctl.lon, near.lat, near.lon)),
       ),
     ]);
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.icon, required this.on, required this.onTap});
+  final String label;
+  final IconData icon;
+  final bool on;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.hp;
+    return Material(
+      color: on ? c.amber : c.surface,
+      shape: StadiumBorder(side: BorderSide(color: on ? c.amber : c.line)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(mainAxisSize: MainAxisSize.min, spacing: 7, children: [
+            Icon(icon, size: 17, color: on ? c.inverse : c.muted),
+            Text(label, style: HpText.s(on ? c.inverse : c.text, 14, FontWeight.w600)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundBtn extends StatelessWidget {
+  const _RoundBtn({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final c = context.hp;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: c.surface,
+        shape: CircleBorder(side: BorderSide(color: c.line)),
+        elevation: 4,
+        shadowColor: Colors.black54,
+        child: InkWell(customBorder: const CircleBorder(), onTap: onTap, child: SizedBox(width: 52, height: 52, child: Icon(icon, color: c.text, size: 24))),
+      ),
+    );
   }
 }
 
@@ -143,14 +259,50 @@ class _NearestCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
+    final c = context.hp;
     final detail = ref.watch(clusterDetailProvider(cluster.id)).value;
     final km = distanceM >= 1000;
-    return HpListItem(
-      tone: cluster.level == 'deep' || cluster.level == 'danger' ? Tone.major : Tone.minor,
-      title: detail?.street ?? '${cluster.lat.toStringAsFixed(4)}, ${cluster.lon.toStringAsFixed(4)}',
-      subtitle: '${_levelName(l, cluster.level ?? 'light')} · ${l.driversCount(cluster.devices)}',
-      trailing: km ? l.kmValue(fmtKm(distanceM / 1000)) : l.mValue('${distanceM.round()}'),
-      onTap: () => context.push('/pothole/${cluster.id}'),
+    final major = cluster.level == 'deep' || cluster.level == 'danger';
+    final tone = major ? c.crater : c.warn;
+    final dist = km ? l.kmValue(fmtKm(distanceM / 1000)) : l.mValue('${distanceM.round()}');
+    final title = detail?.street ?? '${cluster.lat.toStringAsFixed(4)}, ${cluster.lon.toStringAsFixed(4)}';
+    return Material(
+      color: c.surface,
+      elevation: 8,
+      shadowColor: Colors.black87,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22), side: BorderSide(color: c.line)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/pothole/${cluster.id}'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(spacing: 14, children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(color: tone.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(16)),
+              child: Icon(cluster.type.startsWith('manhole') ? Icons.circle_outlined : (cluster.type.startsWith('bump') ? Icons.show_chart_rounded : Icons.trip_origin_rounded), color: tone, size: 28),
+            ),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 6, children: [
+                Text('$title · $dist', style: HpText.s(c.text, 17, FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Row(spacing: 10, children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(color: tone.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(999)),
+                    child: Row(mainAxisSize: MainAxisSize.min, spacing: 5, children: [
+                      Container(width: 7, height: 7, decoration: BoxDecoration(color: tone, shape: BoxShape.circle)),
+                      Text(_levelName(l, cluster.level ?? 'light').replaceAll(RegExp(r'\s*яма$'), ''), style: HpText.s(tone, 12.5, FontWeight.w600)),
+                    ]),
+                  ),
+                  Flexible(child: Text(l.driversCount(cluster.devices), style: HpText.s(c.muted, 13, FontWeight.w400), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ]),
+              ]),
+            ),
+            Icon(Icons.chevron_right_rounded, color: c.muted),
+          ]),
+        ),
+      ),
     );
   }
 }
