@@ -71,6 +71,16 @@ class HpColors extends ThemeExtension<HpColors> {
     inverse: Color(0xFF0B0D12),
   );
 
+  /// Высокая контрастность: приглушённый текст и линии заметно светлее/темнее.
+  HpColors boosted() {
+    final isDark = bgBase.computeLuminance() < 0.3;
+    final strong = isDark ? const Color(0xFFD5DBE6) : const Color(0xFF2B3140);
+    return HpColors(
+      bgBase: bgBase, surface: surface, raised: raised, line: isDark ? const Color(0xFF5A6377) : const Color(0xFF7C8699), text: isDark ? Colors.white : Colors.black, muted: strong,
+      amber: amber, amberText: amberText, amberDim: amberDim, smooth: smooth, smoothText: smoothText, warn: warn, warnText: warnText, crater: crater, craterText: craterText, info: info, inverse: inverse,
+    );
+  }
+
   @override
   HpColors copyWith() => this;
 
@@ -110,8 +120,9 @@ class HpText {
       TextStyle(fontFamily: 'Inter', color: c, fontSize: size, fontWeight: w, letterSpacing: ls, height: h);
 }
 
-ThemeData buildTheme(Brightness b) {
-  final c = b == Brightness.dark ? HpColors.dark : HpColors.light;
+ThemeData buildTheme(Brightness b, {bool highContrast = false}) {
+  final base = b == Brightness.dark ? HpColors.dark : HpColors.light;
+  final c = highContrast ? base.boosted() : base;
   return ThemeData(
     useMaterial3: true,
     brightness: b,

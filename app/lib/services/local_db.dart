@@ -34,6 +34,22 @@ class CachedCluster {
   final int? safeSpeed;
 }
 
+class LocalNote {
+  const LocalNote({required this.id, required this.at, required this.kind, required this.title, required this.body, required this.unread, required this.ref});
+  final int id, at;
+  final String kind, title, body, ref;
+  final bool unread;
+}
+
+class PendingQuestion {
+  const PendingQuestion({required this.id, required this.at, required this.lat, required this.lon, this.heading, required this.peak, required this.speedKmh, required this.guess, required this.wave});
+  final int id, at;
+  final double lat, lon, peak, speedKmh;
+  final double? heading;
+  final String guess;
+  final List<double> wave;
+}
+
 /// Локальная БД на sqlite3 (очередь отправки, история поездок, кэш ям, настройки-значения).
 /// Выбран sqlite3 напрямую: drift_dev несовместим с версиями test, закреплёнными Flutter 3.35.
 class LocalDb {
@@ -46,7 +62,7 @@ class LocalDb {
 
   final Database _db;
 
-  static const _schemaVersion = 1;
+  static const _schemaVersion = 2;
 
   void _migrate() {
     final v = _db.select('PRAGMA user_version').first.values.first as int;
@@ -60,10 +76,68 @@ class LocalDb {
           level TEXT, status TEXT NOT NULL, confidence REAL NOT NULL, safe_speed INTEGER, fetched_at INTEGER NOT NULL);
         CREATE INDEX clusters_pos ON clusters(lat, lon);
         CREATE TABLE kv(k TEXT PRIMARY KEY, v TEXT NOT NULL);
+        PRAGMA user_version = 1;
+      ''');
+    }
+    if (v < 2) {
+      // центр уведомлений и очередь неотвеченных вопросов «что это было?»
+      _db.execute('''
+        CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL,
+          body TEXT NOT NULL DEFAULT '', unread INTEGER NOT NULL DEFAULT 1, ref TEXT NOT NULL DEFAULT '');
+        CREATE INDEX notes_at ON notes(at);
+        CREATE TABLE pending(id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL,
+          heading REAL, peak REAL NOT NULL DEFAULT 0, speed_kmh REAL NOT NULL DEFAULT 0, guess TEXT NOT NULL DEFAULT '', wave TEXT NOT NULL DEFAULT '[]');
         PRAGMA user_version = $_schemaVersion;
       ''');
     }
   }
+
+  // ── центр уведомлений ──
+  int addNote({required int at, required String kind, required String title, String body = '', String ref = ''}) {
+    _db.execute('INSERT INTO notes(at,kind,title,body,ref,unread) VALUES(?,?,?,?,?,?)', [at, kind, title, body, ref, kind == 'push' ? 0 : 1]);
+    _db.execute('DELETE FROM notes WHERE id NOT IN (SELECT id FROM notes ORDER BY at DESC LIMIT 300)');
+    return _db.lastInsertRowId;
+  }
+
+  List<LocalNote> notes({int limit = 100}) => [
+        for (final r in _db.select("SELECT * FROM notes WHERE kind<>'push' ORDER BY at DESC LIMIT ?", [limit]))
+          LocalNote(id: r['id'] as int, at: r['at'] as int, kind: r['kind'] as String, title: r['title'] as String, body: r['body'] as String, unread: (r['unread'] as int) == 1, ref: r['ref'] as String)
+      ];
+
+  int unreadNotes() => _db.select('SELECT COUNT(*) n FROM notes WHERE unread=1').first['n'] as int;
+  void readAllNotes() => _db.execute('UPDATE notes SET unread=0');
+
+  /// Сколько уведомлений данного вида (или любых) создано с момента [sinceMs] — для лимита «не больше N в день».
+  int notesSince(int sinceMs, {String? kind}) =>
+      _db.select(kind == null ? 'SELECT COUNT(*) n FROM notes WHERE at>=?' : 'SELECT COUNT(*) n FROM notes WHERE at>=? AND kind=?', kind == null ? [sinceMs] : [sinceMs, kind]).first['n'] as int;
+
+  // ── очередь вопросов ──
+  int addPending({required int at, required double lat, required double lon, double? heading, double peak = 0, double speedKmh = 0, String guess = '', List<double> wave = const []}) {
+    _db.execute('INSERT INTO pending(at,lat,lon,heading,peak,speed_kmh,guess,wave) VALUES(?,?,?,?,?,?,?,?)', [at, lat, lon, heading, peak, speedKmh, guess, jsonEncode(wave)]);
+    _db.execute('DELETE FROM pending WHERE id NOT IN (SELECT id FROM pending ORDER BY at DESC LIMIT 12)');
+    return _db.lastInsertRowId;
+  }
+
+  List<PendingQuestion> pending({int? notBeforeMs}) => [
+        for (final r in _db.select('SELECT * FROM pending WHERE at>=? ORDER BY at DESC', [notBeforeMs ?? 0]))
+          PendingQuestion(
+            id: r['id'] as int,
+            at: r['at'] as int,
+            lat: (r['lat'] as num).toDouble(),
+            lon: (r['lon'] as num).toDouble(),
+            heading: (r['heading'] as num?)?.toDouble(),
+            peak: (r['peak'] as num).toDouble(),
+            speedKmh: (r['speed_kmh'] as num).toDouble(),
+            guess: r['guess'] as String,
+            wave: [for (final v in jsonDecode(r['wave'] as String) as List) (v as num).toDouble()],
+          )
+      ];
+
+  void removePending(int id) => _db.execute('DELETE FROM pending WHERE id=?', [id]);
+  void clearPending() => _db.execute('DELETE FROM pending');
+
+  /// Удаляет с телефона всё личное: историю поездок, очередь вопросов и уведомления (кэш карты и очередь отправки не трогаем).
+  void wipeUserData() => _db.execute('DELETE FROM trips; DELETE FROM pending; DELETE FROM notes;');
 
   void close() => _db.dispose();
 
@@ -116,6 +190,9 @@ class LocalDb {
     final r = _db.select('SELECT COUNT(*) n, COALESCE(SUM(distance_km),0) km, COALESCE(SUM(potholes),0) p FROM trips').first;
     return (trips: r['n'] as int, km: (r['km'] as num).toDouble(), potholes: (r['p'] as num).toInt());
   }
+
+  /// Состояния ям в кэше (id → статус): чтобы заметить, что яма стала «заделана».
+  Map<int, String> clusterStatuses() => {for (final r in _db.select('SELECT id, status FROM clusters')) r['id'] as int: r['status'] as String};
 
   // ── кэш ям ──
   void replaceClusters(List<CachedCluster> list, {int? now, bool clear = false}) {

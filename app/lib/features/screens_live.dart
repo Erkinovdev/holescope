@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +9,8 @@ import 'package:holescope/core/settings.dart';
 import 'package:holescope/core/theme.dart';
 import 'package:holescope/core/widgets.dart';
 import 'package:holescope/l10n/app_localizations.dart';
+import 'package:holescope/features/comfort.dart' show comfortScore;
+import 'package:holescope/l10n/tr.dart';
 import 'package:holescope/services/ahead_warner.dart';
 import 'package:holescope/services/api_client.dart';
 import 'package:holescope/services/data_providers.dart';
@@ -187,14 +188,30 @@ class WarningScreen extends ConsumerWidget {
     final side = switch (item.side) { 'left' => l.sideLeft, 'right' => l.sideRight, _ => l.sideCenter };
     return HpPage(
       child: HpFill(top: 24, bottom: [
-        HpCard(
-          padding: 20,
-          radius: 24,
-          child: Row(children: [
-            Expanded(child: Text(l.speedLabel, style: HpText.s(c.muted, 15, FontWeight.w500))),
-            Text('$speed ${l.kmh}', style: HpText.s(c.text, 28, FontWeight.w700)),
-          ]),
-        ),
+        if (item.safeSpeed != null && speed > item.safeSpeed!)
+          // совет по скорости (Figma · Flow 17): сколько сейчас и до какой скорости сбросить перед ямой
+          HpCard(
+            padding: 20,
+            radius: 24,
+            child: Column(spacing: 10, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, spacing: 14, children: [
+                Column(children: [Text('$speed', style: HpText.s(c.text, 52, FontWeight.w800, h: 1)), Text(context.tr('сейчас', 'hozir'), style: HpText.s(c.muted, 12, FontWeight.w500))]),
+                Padding(padding: const EdgeInsets.only(bottom: 18), child: Icon(Icons.chevron_right_rounded, color: c.amber, size: 30)),
+                Column(children: [Text('${item.safeSpeed}', style: HpText.s(c.smooth, 52, FontWeight.w800, h: 1)), Text(context.tr('цель', 'maqsad'), style: HpText.s(c.muted, 12, FontWeight.w500))]),
+              ]),
+              ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: (item.safeSpeed! / speed).clamp(0.0, 1.0), minHeight: 6, color: c.smooth, backgroundColor: c.raised)),
+              Text(context.tr('Сбросьте скорость — подвеска скажет спасибо.', 'Tezlikni kamaytiring — osma rahmat aytadi.'), style: HpText.s(c.muted, 12, FontWeight.w500)),
+            ]),
+          )
+        else
+          HpCard(
+            padding: 20,
+            radius: 24,
+            child: Row(children: [
+              Expanded(child: Text(l.speedLabel, style: HpText.s(c.muted, 15, FontWeight.w500))),
+              Text('$speed ${l.kmh}', style: HpText.s(c.text, 28, FontWeight.w700)),
+            ]),
+          ),
         HpButton(ref.watch(settingsProvider).voice ? l.muteSound : l.unmuteSound, kind: HpButtonKind.secondary, onPressed: () {
           ref.read(settingsProvider.notifier).update((s) => s.copyWith(voice: !s.voice, beep: !s.voice));
         }),
@@ -257,6 +274,20 @@ class TripSummaryScreen extends ConsumerWidget {
             stat('${t.potholes}', l.tripPotholes),
             stat(t.distanceKm > 0 ? fmtKm(t.potholes / t.distanceKm) : '0', l.tripPerKm),
           ]),
+          if (comfortScore(seg) != null)
+            HpCard(
+              radius: 22,
+              child: Row(spacing: 16, children: [
+                SizedBox(width: 72, height: 72, child: Stack(alignment: Alignment.center, children: [
+                  CircularProgressIndicator(value: comfortScore(seg)! / 100, strokeWidth: 6, color: comfortScore(seg)! >= 70 ? c.smooth : (comfortScore(seg)! >= 45 ? c.amber : c.crater), backgroundColor: c.line),
+                  Text('${comfortScore(seg)}', style: HpText.s(c.text, 22, FontWeight.w800)),
+                ])),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 2, children: [
+                  Text(context.tr('Комфорт поездки', 'Safar qulayligi'), style: HpText.s(c.text, 16, FontWeight.w700)),
+                  Text(context.tr('По ровности участков: A — 100, B — 85, C — 60, D — 30, E — 0.', 'Qismlar tekisligi boʻyicha: A — 100, B — 85, C — 60, D — 30, E — 0.'), style: HpText.s(c.muted, 12, FontWeight.w400, h: 1.3)),
+                ])),
+              ]),
+            ),
           HpCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
               Text(l.tripRoughness, style: HpText.s(c.muted, 13, FontWeight.w500)),
@@ -495,104 +526,14 @@ class ProfileScreen extends ConsumerWidget {
       HpListItem(tone: Tone.amber, title: l.myFinds, subtitle: l.myFindsSub(tot.potholes), onTap: () => context.push('/my-map')),
       HpListItem(tone: Tone.smooth, title: l.tripsHistory, subtitle: '${tot.trips}', onTap: () => context.push('/trips')),
       HpListItem(tone: Tone.info, title: l.vehicleTitle, subtitle: l.vehicleSuspension, onTap: () => context.push('/vehicle')),
+      HpListItem(tone: Tone.minor, title: context.tr('Подвеска', 'Osma'), subtitle: context.tr('Ямы на ваших поездках за месяц', 'Oylik safarlaringizdagi choʻqqilar'), onTap: () => context.push('/suspension')),
+      HpListItem(tone: Tone.smooth, title: context.tr('Команды «Холи»', 'Holi buyruqlari'), subtitle: context.tr('Что можно сказать вслух', 'Ovoz chiqarib nima deyish mumkin'), onTap: () => context.push('/commands')),
+      Consumer(builder: (context, ref, _) {
+        ref.watch(notesRevProvider);
+        final n = ref.read(dbProvider).unreadNotes();
+        return HpListItem(tone: Tone.amber, title: context.tr('Уведомления', 'Bildirishnomalar'), subtitle: n == 0 ? context.tr('Новых нет', 'Yangilari yoʻq') : context.tr('Новых: $n', 'Yangilari: $n'), onTap: () => context.push('/notifications'));
+      }),
       HpListItem(tone: Tone.muted, title: l.settingsTitle, subtitle: l.settingsSub, onTap: () => context.push('/settings')),
     ]);
-  }
-}
-
-// ───────────────────────── Настройки ─────────────────────────
-class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
-
-  String _mountName(AppLocalizations l, PhoneMount m) => switch (m) { PhoneMount.seat => l.mountSeat, PhoneMount.cupholder => l.mountCupholder, PhoneMount.holder => l.mountHolder };
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context);
-    final c = context.hp;
-    final s = ref.watch(settingsProvider);
-    final n = ref.read(settingsProvider.notifier);
-    final queue = ref.watch(queueSizeProvider);
-    final sens = switch (s.sensitivity) { Sensitivity.low => l.sensLow, Sensitivity.mid => l.sensMid, Sensitivity.high => l.sensHigh };
-    final roleName = switch (s.role) { DeviceRole.driver => l.roleDriver, DeviceRole.passenger => l.rolePassenger, DeviceRole.research => l.roleResearch };
-
-    Future<T?> pick<T>(List<(String, T)> opts, T cur) => showModalBottomSheet<T>(
-          context: context,
-          builder: (_) => SafeArea(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              for (final o in opts)
-                ListTile(
-                  title: Text(o.$1, style: HpText.s(c.text, 16, FontWeight.w500)),
-                  trailing: o.$2 == cur ? Icon(Icons.check_rounded, color: c.amberText) : null,
-                  onTap: () => Navigator.pop(context, o.$2),
-                ),
-            ]),
-          ),
-        );
-
-    return HpPage(
-      child: HpBody(top: 20, children: [
-        HpTitle(l.settingsTitle),
-        HpToggleRow(label: l.autoRecord, value: s.autoRecord, onChanged: (v) => n.update((x) => x.copyWith(autoRecord: v))),
-        HpToggleRow(label: l.setVoice, value: s.voice, onChanged: (v) => n.update((x) => x.copyWith(voice: v))),
-        HpToggleRow(label: l.setHoliAsk, value: s.holiAsk, onChanged: (v) => n.update((x) => x.copyWith(holiAsk: v))),
-        HpToggleRow(label: l.setHoliWake, value: s.holiWake, onChanged: (v) => n.update((x) => x.copyWith(holiWake: v))),
-        HpNavRow(
-          label: '${l.setHoliEngine}: ${switch (s.holiEngine) { 'device' => l.holiEngineDevice, 'cloud' => l.holiEngineCloud, _ => l.holiEngineAuto }}',
-          onTap: () async {
-            final v = await pick<String>([(l.holiEngineAuto, 'auto'), (l.holiEngineDevice, 'device'), (l.holiEngineCloud, 'cloud')], s.holiEngine);
-            if (v != null) n.update((x) => x.copyWith(holiEngine: v));
-          },
-        ),
-        HpNavRow(label: l.holiCheck, onTap: () => context.push('/voice-check')),
-        HpToggleRow(label: l.setBeep, value: s.beep, onChanged: (v) => n.update((x) => x.copyWith(beep: v))),
-        HpNavRow(
-          label: l.setWarnDistance(s.warnDistanceM),
-          onTap: () async {
-            final v = await pick<int>([for (final d in [100, 150, 200, 250, 300]) (l.mValue('$d'), d)], s.warnDistanceM);
-            if (v != null) n.update((x) => x.copyWith(warnDistanceM: v));
-          },
-        ),
-        HpNavRow(
-          label: l.setSensitivity(sens),
-          onTap: () async {
-            final v = await pick<Sensitivity>([(l.sensLow, Sensitivity.low), (l.sensMid, Sensitivity.mid), (l.sensHigh, Sensitivity.high)], s.sensitivity);
-            if (v != null) n.update((x) => x.copyWith(sensitivity: v));
-          },
-        ),
-        HpNavRow(label: l.setCarMount(s.carName ?? l.vehicleNotSet, _mountName(l, s.mount)), onTap: () => context.push('/vehicle')),
-        HpNavRow(label: l.mountTitle, value: _mountName(l, s.mount), onTap: () => context.push('/mount')),
-        HpNavRow(label: l.roleTitle, value: roleName, onTap: () => context.push('/role')),
-        HpNavRow(
-          label: l.setLanguage,
-          value: switch (s.locale?.languageCode) { 'ru' => 'Русский', 'uz' => 'Oʻzbekcha', _ => l.langSystem },
-          onTap: () async {
-            final v = await pick<String>([(l.langSystem, ''), ('Русский', 'ru'), ('Oʻzbekcha', 'uz')], s.locale?.languageCode ?? '');
-            if (v != null) n.update((x) => x.copyWith(locale: v.isEmpty ? null : Locale(v)));
-          },
-        ),
-        HpNavRow(
-          label: l.setTheme,
-          value: switch (s.themeMode) { ThemeMode.system => l.themeSystem, ThemeMode.dark => l.themeDark, ThemeMode.light => l.themeLight },
-          onTap: () async {
-            final v = await pick<ThemeMode>([(l.themeSystem, ThemeMode.system), (l.themeDark, ThemeMode.dark), (l.themeLight, ThemeMode.light)], s.themeMode);
-            if (v != null) n.update((x) => x.copyWith(themeMode: v));
-          },
-        ),
-        HpToggleRow(label: l.setReduceMotion, value: s.reduceMotion, onChanged: (v) => n.update((x) => x.copyWith(reduceMotion: v))),
-        Text(l.setHint, style: HpText.s(c.muted, 13, FontWeight.w400, h: 18 / 13)),
-        if (queue > 0) Text(l.syncQueue(queue), style: HpText.s(c.muted, 13, FontWeight.w400)),
-        if (kDebugMode) ...[
-          const SizedBox(height: 8),
-          Text('DEBUG · экраны', style: HpText.s(c.amberText, 12, FontWeight.w600, ls: 1.44)),
-          for (final r in const [
-            ('/splash', 'Загрузка'), ('/permissions', 'Разрешения'), ('/warning', 'Предупреждение'), ('/complaint/1', 'Жалоба'),
-            ('/complaint/status/1', 'Статус жалобы'), ('/route', 'Выбор маршрута'), ('/notifications', 'Уведомления'), ('/city', 'Дашборд города'),
-            ('/challenges', 'Челленджи'), ('/weekly', 'Отчёт недели'), ('/question', 'Вопрос'), ('/trip-summary', 'Итоги поездки'),
-          ])
-            HpNavRow(label: r.$2, onTap: () => context.push(r.$1)),
-        ],
-      ]),
-    );
   }
 }

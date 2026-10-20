@@ -11,5 +11,10 @@ class AppConfig {
     return 'http://127.0.0.1:8010';
   }
 
-  static const appVersion = '0.2.0';
+  /// Версия приложения (совпадает с pubspec.yaml: 2.1.0+21; проверяется тестом).
+  static const appVersion = '2.1.0';
+  static const appBuild = 21;
+
+  /// Сборка для штатного монитора автомобиля (широкий экран, Android 9): `--dart-define=CAR_MONITOR=true`.
+  static const carMonitor = bool.fromEnvironment('CAR_MONITOR');
 }

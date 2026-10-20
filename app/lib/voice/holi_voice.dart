@@ -210,9 +210,13 @@ class JustAudioHoliPlayer implements HoliPlayer {
     handleAudioSessionActivation: false,
   );
 
+  /// Громкость голоса Холи (из настроек), 0.3..1.
+  static double volume = 0.7;
+
   @override
   Future<bool> play(String asset) async {
     final dur = await _p.setAsset(asset);
+    await _p.setVolume(volume.clamp(0.0, 1.0));
     final done = _p.processingStateStream.firstWhere(
       (s) => s == ProcessingState.completed,
     );

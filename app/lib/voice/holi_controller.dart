@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../algo/event_guess.dart';
 import '../algo/taxonomy_data.dart';
+import '../services/local_db.dart' show PendingQuestion;
 import '../services/mark_service.dart';
+import 'event_ui.dart';
 import 'holi_commands.dart';
 import 'holi_log.dart';
 import 'holi_phrase.dart';
@@ -49,15 +52,18 @@ class HoliCandidate {
 
 /// Вопрос «что это было?»: варианты, догадка модели и выбор водителя.
 class EventPrompt {
-  const EventPrompt({required this.cand, required this.guess, required this.options, this.chosen, this.via = '', this.dismissed = false});
+  const EventPrompt({required this.cand, required this.guess, required this.options, required this.startedAt, required this.deadline, this.chosen, this.via = '', this.dismissed = false, this.depthStage = false});
   final HoliCandidate cand;
   final Guess guess;
   final List<String> options; // правдоподобные варианты по этому удару
+  final DateTime startedAt, deadline; // окно живёт до deadline (касание продлевает, но не дольше 30 с от начала)
   final String? chosen; // ключ выбранного варианта
   final String via; // voice | tap
   final bool dismissed;
+  final bool depthStage; // второй шаг: после «Яма» выбираем глубину
   bool get answered => chosen != null;
-  EventPrompt copyWith({String? chosen, String? via, bool? dismissed}) => EventPrompt(cand: cand, guess: guess, options: options, chosen: chosen ?? this.chosen, via: via ?? this.via, dismissed: dismissed ?? this.dismissed);
+  EventPrompt copyWith({String? chosen, String? via, bool? dismissed, DateTime? deadline, bool? depthStage}) =>
+      EventPrompt(cand: cand, guess: guess, options: options, startedAt: startedAt, deadline: deadline ?? this.deadline, chosen: chosen ?? this.chosen, via: via ?? this.via, dismissed: dismissed ?? this.dismissed, depthStage: depthStage ?? this.depthStage);
 }
 
 /// Диалог Холи: вызов («Привет, Холи» / кнопка), команды (любой вариант из справочника, оценка дороги, отмена) и вопрос «да/нет» после авто-кандидата.
@@ -88,6 +94,13 @@ class HoliController {
     this.eventNoSpeech = const Duration(seconds: 6),
     this.cardHold = const Duration(seconds: 10),
     this.confirmThreshold = 0.5,
+    this.promptWindow,
+    this.canExtend,
+    this.vibrate,
+    this.voiceReply,
+    this.onExpired,
+    this.extendBy = const Duration(seconds: 5),
+    this.maxWindow = const Duration(seconds: 30),
   }) : _now = now ?? DateTime.now;
 
   final HoliVoice voice;
@@ -97,6 +110,12 @@ class HoliController {
   final String Function() lang;
   final Duration firstWindow, firstNoSpeech, followWindow, followNoSpeech, confirmWindow, confirmNoSpeech, silence, settle, askEvery, eventWindow, eventNoSpeech, cardHold;
   final double confirmThreshold;
+  final Duration Function()? promptWindow; // сколько живёт окно «что это было?» (настройки: 10/20/30 с); по умолчанию — cardHold
+  final bool Function()? canExtend; // касание продлевает окно
+  final bool Function()? vibrate; // тик при показе и при ответе
+  final bool Function()? voiceReply; // спрашивать голосом и слушать ответ
+  final void Function(HoliCandidate cand, Guess guess)? onExpired; // не успели ответить: вопрос уходит в очередь
+  final Duration extendBy, maxWindow;
   final GuessContext Function(HoliCandidate cand)? contextFor; // известный объект рядом (из кэша карты)
   final bool Function()? speakEnabled; // голос выключен в настройках: вопрос остаётся на экране без звука
   final int markBackSeconds, maxAsksPerTrip, maxTurns;
@@ -322,10 +341,13 @@ class HoliController {
     _asks++;
     _lastAsk = _now();
     _cardTimer?.cancel();
-    _setPrompt(EventPrompt(cand: cand, guess: guess, options: options));
+    final now = _now();
+    _setPrompt(EventPrompt(cand: cand, guess: guess, options: options, startedAt: now, deadline: now.add(promptWindow?.call() ?? cardHold)));
+    _armExpiry();
+    if (vibrate?.call() ?? false) unawaited(HapticFeedback.lightImpact());
     HoliLog.add('вопрос по удару: догадка ${guess.top} ${(guess.confidence * 100).round()}%, варианты $options');
     try {
-      if (!(speakEnabled?.call() ?? true)) return; // тихий режим: выбор нажатием
+      if (!(speakEnabled?.call() ?? true) || !(voiceReply?.call() ?? true)) return; // тихий режим: выбор нажатием
       await voice.chime();
       if (prompt?.answered == true) return;
       var confirm = guess.confidence >= confirmThreshold && guess.top != 'handled' && guess.top != 'noise';
@@ -336,7 +358,14 @@ class HoliController {
         await _say(HoliPhrase.askWhat);
       }
       for (var attempt = 0; attempt < 2 && prompt?.answered != true && prompt?.dismissed != true; attempt++) {
-        final out = await _listen(eventWindow, eventNoSpeech, confirm: confirm);
+        // окно настраивается: слушаем не дольше, чем осталось до конца окна (без настройки — как раньше)
+        var listenFor = eventWindow;
+        if (promptWindow != null) {
+          final left = prompt == null ? Duration.zero : prompt!.deadline.difference(_now());
+          if (left < const Duration(seconds: 2)) break;
+          if (left - const Duration(seconds: 1) < listenFor) listenFor = left - const Duration(seconds: 1);
+        }
+        final out = await _listen(listenFor, eventNoSpeech, confirm: confirm);
         if (prompt?.answered == true) return; // нажали вариант на экране
         if (out.failed) {
           _set(error: out.error, engine: out.engine, detail: out.detail);
@@ -373,7 +402,7 @@ class HoliController {
     } finally {
       voice.release();
       await _finish();
-      _scheduleCardClear();
+      if (prompt?.answered == true || prompt?.dismissed == true) _scheduleCardClear();
     }
   }
 
@@ -389,15 +418,79 @@ class HoliController {
   Future<void> _choose(String key, String via) async {
     final pr = prompt;
     if (pr == null || pr.answered) return;
+    _cardTimer?.cancel();
     _setPrompt(pr.copyWith(chosen: key, via: via));
+    if (vibrate?.call() ?? false) unawaited(HapticFeedback.mediumImpact());
     final c = pr.cand;
     final top = pr.guess.ranked(3);
+    if (key == 'unknown') {
+      // «Не знаю» — тоже ответ: вопрос закрыт, но в обучение ничего не уходит
+      HoliLog.add('ответ по удару: не знаю ($via)');
+      _scheduleCardClear(after: const Duration(milliseconds: 1500));
+      return;
+    }
     marks.add(MarkKind(key), MarkFix(c.at, c.lat, c.lon, c.heading), guess: {'top': pr.guess.top, 'p': pr.guess.confidence, 'v': GuessParams.current.version, 'top3': {for (final e in top) e.key: e.value}, 'via': via});
     HoliLog.add('ответ по удару: $key ($via), догадка была ${pr.guess.top}');
     _set(status: HoliStatus.speaking);
     await voice.playKey('thanks_short');
     await voice.idle;
     _scheduleCardClear(after: const Duration(milliseconds: 2500));
+  }
+
+  /// Окно «что это было?» исчезает само в [EventPrompt.deadline]: не успели — вопрос уходит в очередь до остановки.
+  void _armExpiry() {
+    _cardTimer?.cancel();
+    final pr = prompt;
+    if (pr == null || pr.answered) return;
+    final left = pr.deadline.difference(_now());
+    _cardTimer = Timer(left.isNegative ? Duration.zero : left, expirePrompt);
+  }
+
+  /// Любое касание окна добавляет [extendBy] (не больше [maxWindow] от начала). Возвращает, продлилось ли окно.
+  bool touchPrompt() {
+    final pr = prompt;
+    if (pr == null || pr.answered || !(canExtend?.call() ?? false)) return false;
+    final cap = pr.startedAt.add(maxWindow);
+    var next = pr.deadline.add(extendBy);
+    if (next.isAfter(cap)) next = cap;
+    if (!next.isAfter(pr.deadline)) return false;
+    _setPrompt(pr.copyWith(deadline: next));
+    _armExpiry();
+    return true;
+  }
+
+  /// Выбран крупный тип: «Яма» открывает выбор глубины, «Не знаю» закрывает вопрос, остальные сохраняются сразу.
+  Future<void> pickGroup(EvGroup g) async {
+    final pr = prompt;
+    if (pr == null || pr.answered) return;
+    if (g == EvGroup.pothole) {
+      touchPrompt();
+      _setPrompt(prompt?.copyWith(depthStage: true));
+      return;
+    }
+    await speech.cancel();
+    await voice.stop();
+    await _choose(g == EvGroup.unknown ? 'unknown' : resolveGroup(g, pr.guess), 'tap');
+  }
+
+  /// Ответ на вопрос из очереди (на остановке): сохраняется отметка по времени и месту удара. [key] == 'unknown' — просто закрыть.
+  void answerQueued(PendingQuestion q, String key) {
+    if (key == 'unknown') return;
+    marks.add(MarkKind(key), MarkFix(DateTime.fromMillisecondsSinceEpoch(q.at), q.lat, q.lon, q.heading), guess: {'top': q.guess, 'via': 'queue'});
+    HoliLog.add('ответ из очереди: $key (догадка была ${q.guess})');
+  }
+
+  /// «Ложное срабатывание» (телефон тронули, не дорога).
+  Future<void> pickFalse() => selectOption('handled');
+
+  /// Окно истекло или водитель отложил: сохраняем вопрос в очередь (на остановке можно ответить).
+  void expirePrompt() {
+    final pr = prompt;
+    _cardTimer?.cancel();
+    if (pr == null) return;
+    unawaited(speech.cancel());
+    if (!pr.answered && !pr.dismissed) onExpired?.call(pr.cand, pr.guess);
+    _setPrompt(null);
   }
 
   void _scheduleCardClear({Duration? after}) {

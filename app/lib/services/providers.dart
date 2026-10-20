@@ -3,10 +3,12 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/settings.dart';
+import '../features/comfort.dart' show strongHitPeak;
 import '../l10n/app_localizations.dart';
 import '../voice/holi_controller.dart';
 import '../voice/holi_phrase.dart';
@@ -23,6 +25,7 @@ import 'config.dart';
 import 'device_auth.dart';
 import 'engine.dart';
 import 'mark_service.dart';
+import 'notify.dart';
 import 'permissions.dart';
 import 'sensor_source.dart';
 import 'trip_recorder.dart';
@@ -47,7 +50,26 @@ final engineProvider = Provider<RecorderEngine>((ref) {
     rawDir: ref.watch(supportDirProvider) == null ? null : '${ref.watch(supportDirProvider)}/raw',
     recoveryFile: ref.watch(supportDirProvider) == null ? null : File('${ref.watch(supportDirProvider)}/current_trip.bin'),
     platform: Platform.isIOS ? 'ios' : 'android',
+    uploadAllowed: () async {
+      if (!ref.read(settingsProvider).wifiOnly) return true;
+      try {
+        final r = await Connectivity().checkConnectivity();
+        return r.contains(ConnectivityResult.wifi) || r.contains(ConnectivityResult.ethernet);
+      } catch (_) {
+        return true;
+      }
+    },
   );
+  final hub = ref.read(notificationHubProvider);
+  e.onWarn = (item) {
+    final l = lookupAppLocalizations(Locale(_voiceLang(ref)));
+    final lvl = switch (item.level) { 'light' => l.levelLight, 'mid' => l.levelMid, 'danger' => l.levelDanger, _ => l.levelDeep };
+    unawaited(hub.post(NoteKind.pothole, l.ttsAhead(item.distanceM), body: '$lvl${item.safeSpeed != null ? ' · ${item.safeSpeed} ${l.kmh}' : ''}', urgent: true, minGap: const Duration(minutes: 5)));
+  };
+  e.onFixedAhead = (c) {
+    final uz = _voiceLang(ref) == 'uz';
+    unawaited(hub.post(NoteKind.fixed, uz ? 'Choʻqqi tuzatildi' : 'Яму заделали', body: uz ? 'Siz ogohlantirilgan joy ta’mirlandi.' : 'Участок, о котором мы вас предупреждали, отремонтирован.'));
+  };
   ref.onDispose(e.dispose);
   return e;
 });
@@ -108,9 +130,25 @@ final holiControllerProvider = FutureProvider<HoliController>((ref) async {
     lang: () => _voiceLang(ref),
     speakEnabled: () => ref.read(settingsProvider).voice,
     contextFor: (c) => _contextFor(eng, c),
+    promptWindow: () => Duration(seconds: ref.read(settingsProvider).eventWindowS),
+    canExtend: () => ref.read(settingsProvider).eventExtend,
+    vibrate: () => ref.read(settingsProvider).eventVibrate,
+    voiceReply: () => ref.read(settingsProvider).eventVoiceReply,
+    onExpired: (cand, guess) {
+      final f = cand.features;
+      eng.db.addPending(at: cand.at.millisecondsSinceEpoch, lat: cand.lat, lon: cand.lon, heading: cand.heading, peak: f?.peak ?? 0, speedKmh: f?.speedKmh ?? 0, guess: guess.top);
+      final uz = _voiceLang(ref) == 'uz';
+      unawaited(ref.read(notificationHubProvider).post(NoteKind.question, uz ? 'Savol toʻxtashni kutmoqda' : 'Вопрос ждёт остановки', body: uz ? 'Bu nima edi? Toʻxtaganingizda javob bering.' : 'Что это было? Ответьте на остановке.', urgent: false, ref: 'queue'));
+    },
   );
   eng.onCandidate = (c) {
     if (ref.read(settingsProvider).holiAsk) unawaited(ctrl.askEvent(c));
+    final f = c.features;
+    if (f != null && f.peak >= strongHitPeak) {
+      final uz = _voiceLang(ref) == 'uz';
+      final peak = f.peak.toStringAsFixed(1);
+      unawaited(ref.read(notificationHubProvider).post(NoteKind.service, uz ? 'Kuchli zarba' : 'Сильный удар', body: uz ? 'Xavfsiz joyda toʻxtab, shina va diskni koʻzdan kechiring.' : 'Остановитесь в безопасном месте и осмотрите шину и диск.', ref: 'strong:peak=$peak&v=${f.speedKmh.round()}', urgent: true, minGap: const Duration(minutes: 10)));
+    }
   };
   eng.onTripDone = (t) {
     ctrl.resetTrip();
@@ -165,3 +203,39 @@ final totalsProvider = Provider<({int trips, double km, int potholes})>((ref) {
 });
 
 final nicknameProvider = Provider<String?>((ref) => ref.watch(dbProvider).kvGet('nickname'));
+
+/// Системные уведомления; в main() заменяется настоящими.
+final systemNotifierProvider = Provider<SystemNotifier>((ref) => NoopSystemNotifier());
+
+/// Счётчик изменений центра уведомлений и очереди вопросов (экраны перечитывают базу, когда он растёт).
+class _Rev extends Notifier<int> {
+  @override
+  int build() => 0;
+  void bump() => state++;
+}
+
+final notesRevProvider = NotifierProvider<_Rev, int>(_Rev.new);
+
+final notificationHubProvider = Provider<NotificationHub>((ref) => NotificationHub(
+      db: ref.watch(dbProvider),
+      settings: () => ref.read(settingsProvider),
+      system: ref.watch(systemNotifierProvider),
+      appInForeground: appIsForeground,
+      onChange: () => ref.read(notesRevProvider.notifier).bump(),
+      onBanner: (kind, title, body) => ref.read(bannerProvider.notifier).show(NoteBanner(kind, title, body)),
+    ));
+
+/// Короткая подсказка сверху экрана (4 секунды): новое уведомление, пока приложение открыто.
+class NoteBanner {
+  const NoteBanner(this.kind, this.title, this.body);
+  final String kind, title, body;
+}
+
+class _BannerNotifier extends Notifier<NoteBanner?> {
+  @override
+  NoteBanner? build() => null;
+  void show(NoteBanner b) => state = b;
+  void clear() => state = null;
+}
+
+final bannerProvider = NotifierProvider<_BannerNotifier, NoteBanner?>(_BannerNotifier.new);

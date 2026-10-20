@@ -21,6 +21,10 @@ const routes = [
   '/map', '/drive', '/streets', '/profile', '/my-map', '/pothole/1', '/warning', '/settings', '/complaint/1', '/complaint/status/1',
   '/route', '/notifications', '/city', '/challenges', '/weekly', '/vehicle', '/question', '/trip-summary', '/mount', '/role',
   '/permissions', '/onboarding/role', '/onboarding/mount', '/trips', '/voice-check',
+  '/onboarding/lang', '/onboarding/intro', '/onboarding/location', '/onboarding/motion', '/onboarding/theme', '/onboarding/ready',
+  '/settings/notifications', '/settings/voice', '/settings/events', '/settings/warnings', '/settings/recording', '/settings/look', '/settings/language',
+  '/settings/privacy', '/settings/car', '/settings/about', '/queue', '/types',
+  '/car', '/strong-hit?peak=14.2&v=42', '/suspension', '/commands',
 ];
 
 Future<void> _loadInter() async {
@@ -81,6 +85,15 @@ void main() {
     for (final r in routes) {
       await _pump(t, r, lang: 'ru', mode: ThemeMode.dark, size: const Size(320, 568));
       expect(t.takeException(), isNull, reason: r);
+    }
+  });
+
+  testWidgets('экран автомонитора: 1280×720, 1920×720, 1280×480, 1024×600 и телефон без overflow', (t) async {
+    for (final size in const [Size(1280, 720), Size(1920, 720), Size(1280, 480), Size(1024, 600), Size(390, 844)]) {
+      for (final lang in ['ru', 'uz']) {
+        await _pump(t, '/car', lang: lang, mode: ThemeMode.dark, size: size);
+        expect(t.takeException(), isNull, reason: '$size $lang');
+      }
     }
   });
 

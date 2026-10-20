@@ -60,23 +60,6 @@ class _RouteChoiceScreenState extends State<RouteChoiceScreen> {
   }
 }
 
-// ───────────────────────── Уведомления ─────────────────────────
-class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    const tones = [Tone.smooth, Tone.major, Tone.amber, Tone.info];
-    return HpPage(
-      child: HpBody(children: [
-        HpTitle(l.notifTitle),
-        const DemoBanner(),
-        for (final n in Demo.notifications) HpListItem(tone: tones[n.$1], title: n.$2, subtitle: n.$3, trailing: n.$4),
-      ]),
-    );
-  }
-}
-
 // ───────────────────────── Челленджи ─────────────────────────
 class ChallengesScreen extends StatelessWidget {
   const ChallengesScreen({super.key});

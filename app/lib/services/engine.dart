@@ -30,6 +30,7 @@ class RecorderEngine {
     this.rawDir,
     this.recoveryFile,
     this.platform = '',
+    this.uploadAllowed,
     RecorderConfig config = const RecorderConfig(),
   }) {
     recorder = TripRecorder(
@@ -55,7 +56,11 @@ class RecorderEngine {
         ));
       },
     );
-    warner = AheadWarner(db, api, config: () => AheadConfig(warnDistanceM: settings().warnDistanceM));
+    warner = AheadWarner(db, api, config: () {
+      final s = settings();
+      return AheadConfig(warnDistanceM: s.warnDistanceM, allowLight: s.warnLight, allowMid: s.warnMid, allowDeep: s.warnDeep, speedAware: s.warnUseSpeed);
+    });
+    warner.onFixed = (c) => onFixedAhead?.call(c);
     outbox = OutboxWorker(db, api);
   }
 
@@ -90,7 +95,10 @@ class RecorderEngine {
   }
 
   late final TripRecorder recorder;
+  final Future<bool> Function()? uploadAllowed; // например, «только по Wi-Fi»
   late final AheadWarner warner;
+  void Function(AheadItem item)? onWarn; // предупредили о яме (для центра уведомлений)
+  void Function(CachedCluster c)? onFixedAhead; // яма, о которой предупреждали, заделана
   late final OutboxWorker outbox;
 
   final snapshot = ValueNotifier<RecorderSnapshot>(const RecorderSnapshot());
@@ -166,12 +174,13 @@ class RecorderEngine {
         warning.value = AheadItem(id: cur.id, distanceM: p.along.round(), side: cur.side, level: cur.level, safeSpeed: cur.safeSpeed, type: cur.type, lat: cur.lat, lon: cur.lon);
       }
     }
-    final item = warner.check(f.lat, f.lon, hd);
+    final item = warner.check(f.lat, f.lon, hd, speedKmh: speedKmh);
     if (item != null) {
       warning.value = item;
       _clearWarn?.cancel();
       _clearWarn = Timer(const Duration(seconds: 12), () => warning.value = null);
       unawaited(announcer.warn(item, lang: s.locale?.languageCode ?? 'ru', speedKmh: speedKmh, voice: s.voice, beep: s.beep));
+      onWarn?.call(item);
     }
   }
 
@@ -189,6 +198,7 @@ class RecorderEngine {
   Future<void> flushOutbox() async {
     queueSize.value = db.outboxCount();
     if (queueSize.value == 0) return;
+    if (uploadAllowed != null && !await uploadAllowed!()) return; // ждём Wi-Fi
     try {
       final s = settings();
       await auth.ensureRegistered(api, platform: platform, lang: s.locale?.languageCode ?? 'ru', role: s.role == DeviceRole.passenger ? 'passenger' : (s.role == DeviceRole.research ? 'research' : 'driver'));
