@@ -353,3 +353,23 @@ def test_challenges(staff, data):
     assert lst["summary"]["active"] == 1 and lst["items"][0]["done"] >= 0
     cid = r.json()["id"]
     assert c.post(f"{A}/challenges/{cid}/patch", json.dumps({"archived": True}), content_type=J, headers=tok["admin"]).json()["archived"] is True
+
+
+def test_brain_models_and_experiments(staff, db):
+    c, tk = staff
+    r = c.get(f"{A}/brain/models", headers=tk["analyst"])
+    assert r.status_code == 200
+    d = r.json()
+    assert [m["key"] for m in d["models"]] == ["sezgi", "nazar", "mezon", "xotira", "ustoz", "holi"]
+    assert all(m["name"] and m["stats"] for m in d["models"])
+    assert "events_24h" in d["activity"]
+    r = c.get(f"{A}/brain/experiments", headers=tk["analyst"])
+    assert r.status_code == 200 and len(r.json()["floor_sweep"]) == 6
+    assert c.get(f"{A}/brain/models").status_code in (401, 403)
+
+
+def test_calm_sensitivity_command(db):
+    from django.core.management import call_command
+    call_command("calm_sensitivity", floor=2.8, k=5.5)
+    av = AlgoVersion.objects.get(kind="rules", active=True)
+    assert av.params["floor"] == 2.8 and av.params["k_noise"] == 5.5

@@ -43,7 +43,7 @@ export default function Brain() {
 // ───────────────────────── 3D-граф ─────────────────────────
 const KIND_NAMES: Record<string, string> = { cluster: 'яма', road: 'дорога', version: 'версия', feature: 'признак', device: 'устройство-подтвердитель' }
 
-function GraphTab() {
+export function GraphTab() {
   const [limit, setLimit] = useState('220')
   const g = useGet<{ nodes: GraphNode[]; edges: GraphEdge[]; counts: { clusters: number; nodes: number; edges: number } }>('/admin/brain/graph', { limit })
   const [sel, setSel] = useState<GraphNode | null>(null)

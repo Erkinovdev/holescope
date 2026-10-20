@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, public, openapi, voice, admin_api as aa, admin_brain as ab, admin_calib as ac, admin_evolution as ae, admin_system as asys, admin_challenges as ach
+from . import views, public, openapi, voice, admin_api as aa, admin_brain as ab, admin_calib as ac, admin_evolution as ae, admin_system as asys, admin_challenges as ach, admin_models as am
 
 urlpatterns = [
     path("devices/register", views.register),
@@ -12,6 +12,7 @@ urlpatterns = [
     path("questions/next", views.questions_next),
     path("questions/<int:qid>/answer", views.question_answer),
     path("map/clusters", views.map_clusters),
+    path("map/stretches", views.map_stretches),
     path("map/segments", public.map_segments),
     path("map/cell", public.map_cell),
     path("search", public.search),
@@ -59,6 +60,8 @@ urlpatterns = [
     path("admin/brain/summary", ab.summary),
     path("admin/brain/readiness", ab.readiness_view),
     path("admin/brain/evolution", ae.evolution),
+    path("admin/brain/models", am.models_overview),
+    path("admin/brain/experiments", am.experiments),
     path("admin/badges", asys.badges),
     path("admin/system", asys.system),
     path("admin/challenges", ach.challenges_list),

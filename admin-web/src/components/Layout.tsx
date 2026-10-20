@@ -25,11 +25,7 @@ export const GROUPS: NavGroup[] = [
     { to: '/dictionaries', label: 'Справочники', min: 'analyst', icon: 'doc' },
   ] },
   { title: 'МОЗГ', items: [
-    { to: '/brain', label: 'Мозг', min: 'analyst', icon: 'brain' },
-    { to: '/learning', label: 'Обучение', min: 'analyst', icon: 'chip' },
-    { to: '/questions', label: 'Вопросы', min: 'analyst', icon: 'help', badge: 'questions' },
-    { to: '/memory', label: 'Память · CSV', min: 'analyst', icon: 'db' },
-    { to: '/algo', label: 'Алгоритм', min: 'analyst', icon: 'sliders' },
+    { to: '/brain', label: 'Мозг', min: 'analyst', icon: 'brain', badge: 'questions' },
   ] },
   { title: 'ПУБЛИКАЦИИ', items: [
     { to: '/reports', label: 'Отчёты', min: 'analyst', icon: 'doc' },

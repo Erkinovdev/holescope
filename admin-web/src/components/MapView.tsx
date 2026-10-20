@@ -6,22 +6,27 @@ import { api, type Cluster, type Page } from '../lib/api'
 
 /** Центр Ташкента (приблизительно) — старт карты. */
 export const TASHKENT: [number, number] = [69.279, 41.311]
-const TILE_URL = import.meta.env.VITE_TILE_URL as string | undefined   // необязательная растровая подложка (например OSM — учитывайте политику тайлов)
 
 // воркер карты отдаём явным адресом: иначе сборщик не кладёт maplibre-gl-worker.mjs рядом с чанком (404)
 setWorkerUrl(workerUrl)
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'
+const theme = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+/** Свои векторные тайлы Ташкента (planetiler) и стиль в цветах бренда: /map/style-dark.json, /map/style-light.json */
+const styleUrl = () => `${location.origin}/map/style-${theme()}.json`
 
 // ячейка карты 0.01°: целые смещения от угла ячейки в миллионных долях градуса (см. /map/cell на сервере)
 interface CellResp { o: [number, number]; u: number; s: [number, number, number, number, number, string, string, number][] }
+interface StretchResp { stretches: { id: string; cls: string; length_m: number; speed_kmh: number; road: string; geometry: [number, number][] }[] }
 const CELL = 0.01
 type Feat = { type: 'Feature'; properties: { cls: string; rc: string; dir: number }; geometry: { type: 'LineString'; coordinates: number[][] } }
 
-export interface MapLayers { roads: boolean; roughness: boolean; clusters: boolean }
+export interface MapLayers { roads: boolean; roughness: boolean; clusters: boolean; stretches?: boolean }
+/** element — только элементы (глубокие ямы, лежачие, люки, рельсы); quality — то, что уходит в качество дороги; all — всё */
+export type ClusterKind = 'element' | 'quality' | 'all'
 
-export default function MapView({ layers, statuses, onSelect, selectedId, flyTo, height = '100%', minimal = false, center, zoom = 12, onMove }: {
-  layers: MapLayers; statuses?: string[]; onSelect?: (c: Cluster) => void; selectedId?: number | null; flyTo?: { lon: number; lat: number; zoom?: number; n: number } | null
+export default function MapView({ layers, statuses, kind = 'element', onSelect, selectedId, flyTo, height = '100%', minimal = false, center, zoom = 12, onMove }: {
+  layers: MapLayers; statuses?: string[]; kind?: ClusterKind; onSelect?: (c: Cluster) => void; selectedId?: number | null; flyTo?: { lon: number; lat: number; zoom?: number; n: number } | null
   height?: string | number; minimal?: boolean; center?: [number, number]; zoom?: number; onMove?: (c: { lon: number; lat: number; zoom: number }) => void
 }) {
   const el = useRef<HTMLDivElement>(null)
@@ -30,8 +35,8 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
   const cellCache = useRef(new Map<string, { at: number; feats: Feat[] }>())
   const loadGen = useRef(0)
   const [status, setStatus] = useState<string>('')
-  const propsRef = useRef({ layers, statuses, onSelect, onMove })
-  propsRef.current = { layers, statuses, onSelect, onMove }
+  const propsRef = useRef({ layers, statuses, kind, onSelect, onMove })
+  propsRef.current = { layers, statuses, kind, onSelect, onMove }
 
   // создание карты
   useEffect(() => {
@@ -40,21 +45,32 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
       container: el.current,
       center: center ?? TASHKENT,
       zoom,
-      style: { version: 8, sources: TILE_URL ? { base: { type: 'raster', tiles: [TILE_URL], tileSize: 256, attribution: '© OpenStreetMap contributors' } } : {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': css('--bg-surface') } }, ...(TILE_URL ? [{ id: 'base', type: 'raster' as const, source: 'base', paint: { 'raster-opacity': 0.35 } }] : [])] },
-      attributionControl: { compact: true, customAttribution: 'Дороги: © OpenStreetMap contributors (ODbL)' },
+      minZoom: 9,
+      maxZoom: 19,
+      style: styleUrl(),
+      attributionControl: { compact: true, customAttribution: 'Данные карты: © OpenStreetMap contributors (ODbL)' },
     })
     map.current = m
     if (!minimal) m.addControl(new NavigationControl({ showCompass: false }), 'top-right')
-    m.on('load', () => {
+    const addOverlay = () => {
+      if (m.getSource('segs')) return
       m.addSource('segs', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      m.addSource('str', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       m.addSource('cl', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      // протяжённые участки плохого качества: широкая полупрозрачная подложка под цветной ровностью
+      m.addLayer({ id: 'stretch-glow', type: 'line', source: 'str', layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': ['match', ['get', 'cls'], 'E', css('--crater'), css('--warn')], 'line-opacity': 0.22, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 8, 16, 26], 'line-blur': 2 } })
       m.addLayer({ id: 'roads', type: 'line', source: 'segs', filter: ['==', ['get', 'cls'], ''], layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': css('--muted'), 'line-opacity': 0.4, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, ['match', ['get', 'rc'], 'R', 2, 'A', 1.8, 1], 16, ['match', ['get', 'rc'], 'R', 8, 'A', 7, 'B', 5, 3]] } })
+        paint: { 'line-color': css('--muted'), 'line-opacity': 0.4, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 16, 4] } })
+      m.addLayer({ id: 'rough-casing', type: 'line', source: 'segs', filter: ['!=', ['get', 'cls'], ''], layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': css('--bg-base'), 'line-opacity': 0.55, 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 10, 2.4, 14, 6.5, 18, 17], 'line-offset': ['*', ['get', 'dir'], 1.2] } })
       m.addLayer({ id: 'rough', type: 'line', source: 'segs', filter: ['!=', ['get', 'cls'], ''], layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 16, 6], 'line-offset': ['interpolate', ['linear'], ['zoom'], 14, 0, 17, ['*', ['get', 'dir'], 2.5]], 'line-color': roughExpr() } })
-      m.addLayer({ id: 'halo', type: 'circle', source: 'cl', filter: ['==', ['get', 'sel'], 1], paint: { 'circle-radius': 20, 'circle-color': css('--amber'), 'circle-opacity': 0.25 } })
+        paint: { 'line-width': ['interpolate', ['exponential', 1.4], ['zoom'], 10, 1.4, 14, 4, 18, 11], 'line-offset': ['*', ['get', 'dir'], 1.2], 'line-color': roughExpr() } })
+      m.addLayer({ id: 'halo', type: 'circle', source: 'cl', filter: ['==', ['get', 'sel'], 1], paint: { 'circle-radius': 22, 'circle-color': css('--amber'), 'circle-opacity': 0.3, 'circle-blur': 0.6 } })
+      m.addLayer({ id: 'glow', type: 'circle', source: 'cl', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 9, 16, 20], 'circle-color': clusterExpr(), 'circle-opacity': 0.28, 'circle-blur': 0.7 } })
       m.addLayer({ id: 'clusters', type: 'circle', source: 'cl',
-        paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'passes'], 0, 6, 10, 11], 'circle-color': clusterExpr(), 'circle-stroke-color': css('--bg-base'), 'circle-stroke-width': 2 } })
+        paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'passes'], 0, 6, 10, 11], 'circle-color': clusterExpr(), 'circle-stroke-color': css('--bg-base'), 'circle-stroke-width': 1.8 } })
+      m.addLayer({ id: 'core', type: 'circle', source: 'cl', paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'passes'], 0, 2.2, 10, 4], 'circle-color': css('--bg-base') } })
       m.on('click', 'clusters', (e) => {
         const id = e.features?.[0]?.properties?.id as number | undefined
         const c = clustersRef.current.find((x) => x.id === id)
@@ -63,7 +79,9 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
       m.on('mouseenter', 'clusters', () => { m.getCanvas().style.cursor = 'pointer' })
       m.on('mouseleave', 'clusters', () => { m.getCanvas().style.cursor = '' })
       load()
-    })
+    }
+    m.on('load', addOverlay)
+    m.on('styledata', () => { if (m.isStyleLoaded()) addOverlay() }) // после смены темы (setStyle) слои добавляются заново
     let t: ReturnType<typeof setTimeout> | undefined
     m.on('moveend', () => {
       const c = m.getCenter()
@@ -71,25 +89,15 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
       clearTimeout(t)
       t = setTimeout(load, 350)
     })
-    // смена темы → перекрасить слои и фон
-    const mo = new MutationObserver(() => recolor())
+    // смена темы → другой стиль подложки (слои вернёт addOverlay)
+    let cur = theme()
+    const mo = new MutationObserver(() => { if (theme() !== cur) { cur = theme(); m.setStyle(styleUrl()) } })
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     const ro = new ResizeObserver(() => m.resize())
     ro.observe(el.current)
     return () => { clearTimeout(t); mo.disconnect(); ro.disconnect(); m.remove(); map.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  function recolor() {
-    const m = map.current
-    if (!m || !m.isStyleLoaded()) return
-    m.setPaintProperty('bg', 'background-color', css('--bg-surface'))
-    m.setPaintProperty('roads', 'line-color', css('--muted'))
-    m.setPaintProperty('rough', 'line-color', roughExpr())
-    m.setPaintProperty('clusters', 'circle-color', clusterExpr())
-    m.setPaintProperty('clusters', 'circle-stroke-color', css('--bg-base'))
-    m.setPaintProperty('halo', 'circle-color', css('--amber'))
-  }
 
   async function load() {
     const m = map.current
@@ -102,7 +110,7 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
     setStatus('загрузка…')
     try {
       if (z >= 11.3 && (L.roads || L.roughness)) {
-        // карта грузится ячейками: уже загруженные берутся из кэша, запрашиваются только недостающие; на дальнем масштабе — только магистрали
+        // карта грузится ячейками: уже загруженные берутся из кэша, запрашиваются только недостающие; подложку рисуют тайлы, поэтому только оценённые сегменты
         const set = z >= 14 ? 'all' : z >= 12.5 ? 'main' : 'major'
         const scored = L.roads ? 0 : 1
         const i0 = Math.floor(b.getSouth() / CELL), i1 = Math.floor(b.getNorth() / CELL)
@@ -133,15 +141,24 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
         if (cellCache.current.size > 160) { const old = [...cellCache.current.entries()].sort((p, q) => p[1].at - q[1].at).slice(0, 60); for (const [k] of old) cellCache.current.delete(k) }
         m.setLayoutProperty('roads', 'visibility', L.roads ? 'visible' : 'none')
         m.setLayoutProperty('rough', 'visibility', L.roughness ? 'visible' : 'none')
+        m.setLayoutProperty('rough-casing', 'visibility', L.roughness ? 'visible' : 'none')
       } else {
         ;(m.getSource('segs') as GeoJSONSource).setData({ type: 'FeatureCollection', features: [] })
       }
+      // протяжённые участки плохого качества (D/E от 100 м)
+      if (L.stretches && z >= 11) {
+        const r = await api.get<StretchResp>('/map/stretches', { bbox })
+        ;(m.getSource('str') as GeoJSONSource).setData({ type: 'FeatureCollection', features: r.stretches.map((s) => ({ type: 'Feature' as const, properties: { cls: s.cls, len: s.length_m }, geometry: { type: 'LineString' as const, coordinates: s.geometry.map(([la, lo]) => [lo, la]) } })) })
+      } else {
+        ;(m.getSource('str') as GeoJSONSource).setData({ type: 'FeatureCollection', features: [] })
+      }
       if (L.clusters) {
         const st = propsRef.current.statuses
-        const r = await api.get<Page<Cluster>>('/admin/clusters', { bbox, size: 200, status: st?.length ? st.join(',') : undefined, sort: '-passes' })
+        const kd = propsRef.current.kind
+        const r = await api.get<Page<Cluster>>('/admin/clusters', { bbox, size: 200, status: st?.length ? st.join(',') : undefined, kind: kd === 'all' ? undefined : kd, sort: '-passes' })
         clustersRef.current = r.items
         pushClusters()
-        setStatus(r.total > r.items.length ? `показано ${r.items.length} из ${r.total} ям` : `${r.total} ям`)
+        setStatus(r.total > r.items.length ? `показано ${r.items.length} из ${r.total}` : `${r.total} ${kd === 'quality' ? 'мелких ям' : 'элементов'}`)
       } else {
         clustersRef.current = []
         pushClusters()
@@ -158,12 +175,12 @@ export default function MapView({ layers, statuses, onSelect, selectedId, flyTo,
     if (!src) return
     src.setData({
       type: 'FeatureCollection',
-      features: clustersRef.current.map((c) => ({ type: 'Feature' as const, properties: { id: c.id, passes: c.passes, level: c.level, status: c.status, sel: c.id === selectedRef.current ? 1 : 0 }, geometry: { type: 'Point' as const, coordinates: [c.lon, c.lat] } })),
+      features: clustersRef.current.map((c) => ({ type: 'Feature' as const, properties: { id: c.id, passes: c.passes, level: c.level, status: c.status, el: c.element ? 1 : 0, sel: c.id === selectedRef.current ? 1 : 0 }, geometry: { type: 'Point' as const, coordinates: [c.lon, c.lat] } })),
     })
   }
   const selectedRef = useRef<number | null | undefined>(selectedId)
   useEffect(() => { selectedRef.current = selectedId; pushClusters() }, [selectedId])
-  useEffect(() => { load() /* смена слоёв/фильтров */ }, [layers.roads, layers.roughness, layers.clusters, (statuses ?? []).join(',')])
+  useEffect(() => { load() /* смена слоёв/фильтров */ }, [layers.roads, layers.roughness, layers.clusters, layers.stretches, kind, (statuses ?? []).join(',')])
   useEffect(() => { if (flyTo && map.current) map.current.flyTo({ center: [flyTo.lon, flyTo.lat], zoom: flyTo.zoom ?? 15, duration: 700 }) }, [flyTo?.n])
 
   return (
@@ -178,7 +195,7 @@ function roughExpr(): ExpressionSpecification {
   return ['match', ['get', 'cls'], 'A', css('--smooth'), 'B', mix(css('--smooth'), css('--amber')), 'C', css('--amber'), 'D', css('--warn'), 'E', css('--crater'), css('--line')]
 }
 function clusterExpr(): ExpressionSpecification {
-  return ['case', ['==', ['get', 'status'], 'fixed'], css('--smooth'), ['==', ['get', 'status'], 'candidate'], css('--muted'), ['in', ['get', 'level'], ['literal', ['deep', 'danger']]], css('--crater'), css('--warn')]
+  return ['case', ['==', ['get', 'status'], 'fixed'], css('--smooth'), ['==', ['get', 'el'], 0], css('--muted'), ['in', ['get', 'level'], ['literal', ['deep', 'danger']]], css('--crater'), css('--warn')]
 }
 function mix(a: string, b: string): string {
   const p = (c: string) => { const m = c.replace('#', ''); const n = m.length === 3 ? m.split('').map((x) => x + x).join('') : m; return [0, 2, 4].map((i) => parseInt(n.slice(i, i + 2), 16)) }

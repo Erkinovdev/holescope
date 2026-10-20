@@ -43,7 +43,7 @@ function SplitCard({ title, data }: { title: string; data: Record<string, Split>
   )
 }
 
-export default function Learning() {
+export default function Learning({ embedded = false }: { embedded?: boolean }) {
   const { can } = useAuth()
   const toast = useToast()
   const q = useGet<Evo>('/admin/brain/evolution')
@@ -52,8 +52,15 @@ export default function Learning() {
   const g = d?.eval.guess
   return (
     <div>
-      <PageHeader title="Обучение и эволюция" sub="Насколько модель умнеет: оценка на отложенных поездках, честная — не по тем данным, на которых она училась"
-        right={can('admin') ? <Button kind="primary" loading={train.isPending} onClick={() => train.mutate(undefined)}>Запустить обучение</Button> : undefined} />
+      {embedded ? (
+        <div className="mb-4 flex items-center gap-3">
+          <p className="text-sm text-muted">Оценка честная — на отложенных поездках, не на тех данных, на которых модель училась.</p>
+          {can('admin') && <Button className="ml-auto" kind="primary" loading={train.isPending} onClick={() => train.mutate(undefined)}>Запустить обучение</Button>}
+        </div>
+      ) : (
+        <PageHeader title="Обучение и эволюция" sub="Насколько модель умнеет: оценка на отложенных поездках, честная — не по тем данным, на которых она училась"
+          right={can('admin') ? <Button kind="primary" loading={train.isPending} onClick={() => train.mutate(undefined)}>Запустить обучение</Button> : undefined} />
+      )}
       {q.isLoading && <Spinner />}
       {q.error && <ErrorBox error={q.error} onRetry={() => q.refetch()} />}
       {d && (

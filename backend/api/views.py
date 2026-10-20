@@ -10,7 +10,7 @@ from django.views.decorators.http import require_http_methods
 from fleet.models import Device, Vehicle, CarModel
 from telemetry.models import Trip, RoadEvent, EventCluster, RawUpload
 from brain.models import Question, Label, BrainSnapshot, AlgoVersion
-from brain import guesser, services, road_stats, taxonomy, validation
+from brain import guesser, lane, services, road_stats, stretches, taxonomy, validation
 from .auth import device_required, body
 
 NICK_A = ["Тихий", "Быстрый", "Ночной", "Ясный", "Смелый", "Зоркий"]
@@ -126,20 +126,40 @@ def question_answer(request, qid):
     return JsonResponse({"ok": True})
 
 
+def cluster_public(x: EventCluster) -> dict:
+    """Публичное представление элемента карты: сторона/полоса и можно ли объехать."""
+    info = lane.describe(x.type, x.level, x.lane)
+    return dict(id=x.pk, lat=x.lat, lon=x.lon, type=x.type, level=x.level, status=x.status, passes=x.passes, devices=x.devices,
+                confidence=x.confidence, safe_speed=x.safe_speed_kmh, element=taxonomy.is_element(x.type, x.level), span=info["span"],
+                side=info["side"], advice=info["advice"], heading=x.heading)
+
+
 def map_clusters(request):
-    """Публичная карта: ?bbox=min_lat,min_lon,max_lat,max_lon&status=confirmed,candidate"""
+    """Публичная карта: ?bbox=min_lat,min_lon,max_lat,max_lon&status=confirmed,candidate&all=1.
+    По умолчанию только элементы (глубокие/опасные ямы, лежачие, рельсы, люки с перепадом): мелкие и средние ямы — это качество дороги (см. /map/stretches)."""
     try:
         a, b, c, d = [float(x) for x in request.GET["bbox"].split(",")]
     except (KeyError, ValueError):
         return JsonResponse({"error": "bbox=min_lat,min_lon,max_lat,max_lon"}, status=400)
     st = request.GET.get("status", "confirmed,candidate,complaint").split(",")
-    qs = EventCluster.objects.filter(lat__gte=a, lat__lte=c, lon__gte=b, lon__lte=d, status__in=st)[:2000]
-    return JsonResponse({"clusters": [dict(id=x.pk, lat=x.lat, lon=x.lon, type=x.type, level=x.level, status=x.status,
-                                           passes=x.passes, devices=x.devices, confidence=x.confidence, safe_speed=x.safe_speed_kmh) for x in qs]})
+    qs = EventCluster.objects.filter(lat__gte=a, lat__lte=c, lon__gte=b, lon__lte=d, status__in=st)[:4000]
+    show_all = request.GET.get("all") == "1"
+    return JsonResponse({"clusters": [cluster_public(x) for x in qs if show_all or taxonomy.is_element(x.type, x.level)][:2000]})
+
+
+def map_stretches(request):
+    """Протяжённые участки плохого качества: ?bbox=min_lat,min_lon,max_lat,max_lon&min_len=100. Геометрия [[lat, lon], …] и рекомендуемая скорость."""
+    try:
+        a, b, c, d = [float(x) for x in request.GET["bbox"].split(",")]
+    except (KeyError, ValueError):
+        return JsonResponse({"error": "bbox=min_lat,min_lon,max_lat,max_lon"}, status=400)
+    if (c - a) > 0.4 or (d - b) > 0.5:
+        return JsonResponse({"error": "bbox слишком большой"}, status=400)
+    return JsonResponse({"stretches": stretches.find((a, b, c, d), min_len=float(request.GET.get("min_len", stretches.MIN_LEN_M)))})
 
 
 def ahead(request):
-    """Режим Drive: что впереди по ходу движения. ?lat&lon&heading&dist=300 — ямы в «коридоре» шириной ±25 м."""
+    """Режим Drive: что впереди по ходу движения. ?lat&lon&heading&dist=300 — элементы в «коридоре» шириной ±25 м и участки плохого качества."""
     try:
         lat, lon, hd = float(request.GET["lat"]), float(request.GET["lon"]), float(request.GET["heading"])
     except (KeyError, ValueError):
@@ -149,14 +169,18 @@ def ahead(request):
     out = []
     for c in EventCluster.objects.filter(lat__gte=lat - d, lat__lte=lat + d, lon__gte=lon - d * 1.5, lon__lte=lon + d * 1.5,
                                          status__in=["confirmed", "candidate", "complaint"]):
+        if not taxonomy.is_element(c.type, c.level):
+            continue
         dx = (c.lon - lon) * 111_320 * math.cos(math.radians(lat)); dy = (c.lat - lat) * 111_320
         along = dx * math.sin(math.radians(hd)) + dy * math.cos(math.radians(hd))
         across = dx * math.cos(math.radians(hd)) - dy * math.sin(math.radians(hd))
         if 5 < along <= dist and abs(across) <= 25 and (c.heading is None or abs((c.heading - hd + 180) % 360 - 180) < 70):
-            out.append(dict(id=c.pk, distance_m=round(along), side="right" if across > 6 else "left" if across < -6 else "center",
+            info = lane.describe(c.type, c.level, c.lane)
+            side = info["side"] if info["side"] in ("left", "right") else ("right" if across > 6 else "left" if across < -6 else "center")
+            out.append(dict(id=c.pk, distance_m=round(along), side=side, span=info["span"], advice=info["advice"],
                             level=c.level, type=c.type, confidence=c.confidence, safe_speed=c.safe_speed_kmh))
     out.sort(key=lambda x: x["distance_m"])
-    return JsonResponse({"ahead": out[:5]})
+    return JsonResponse({"ahead": out[:5], "stretches": stretches.ahead(lat, lon, hd, dist)})
 
 
 MARK_KINDS = set(taxonomy.LABEL_KEYS) | set(taxonomy.ROAD_RATINGS) | {"pothole", "deep", "not_pothole"}

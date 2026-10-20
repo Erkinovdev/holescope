@@ -65,6 +65,7 @@ export interface Cluster {
   id: number; lat: number; lon: number; heading: number | null; type: string; level: string; status: string; passes: number; devices: number; quiet_passes: number
   confidence: number; score_median: number; safe_speed: number | null; first_seen: string | null; last_hit: string | null; fixed_at: string | null
   street: string | null; road: string | null; segment: string | null; district: string | null
+  element?: boolean; span?: 'lane' | 'full' | 'stretch'; side?: string; advice?: 'avoid' | 'slow'; lane?: { n?: number; median_m?: number | null; spread_m?: number | null; side?: string; confidence?: number }
 }
 export interface ClusterEvent {
   id: number; at: string; device: string; device_id: number; speed_kmh: number; peak: number; score: number; type: string; level: string; confidence: number
@@ -77,7 +78,7 @@ export interface Readiness {
   facts: { labels: number; road: number; not_road: number; trips_ready: number; trips_needed: number; labels_needed: number; open_questions: number }
 }
 export interface Taxonomy {
-  items: { key: string; group: string; ru: string; uz: string; road: boolean; type: string; level: string; driver: boolean; hint: string }[]
+  items: { key: string; group: string; ru: string; uz: string; road: boolean; type: string; level: string; driver: boolean; hint: string; kind?: 'element' | 'quality' | 'none'; profile?: string; span?: string }[]
   groups: Record<string, { ru: string; uz: string }>
   road_ratings: Record<string, { cls: string; ru: string; uz: string }>
   driver_options: string[]

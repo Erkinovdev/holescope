@@ -123,8 +123,8 @@ def test_drive_ahead(c):
     t1, t2 = register(c), register(c)
     import math
     lon_ahead = LON + 150 / (111_320 * math.cos(math.radians(LAT)))      # 150 м на восток
-    post_trip(c, t1, trip([ev(10, lat=LAT, lon=lon_ahead)]))
-    post_trip(c, t2, trip([ev(10, lat=LAT, lon=lon_ahead)]))
+    post_trip(c, t1, trip([ev(10, lat=LAT, lon=lon_ahead, level="deep", score=9.0)]))
+    post_trip(c, t2, trip([ev(10, lat=LAT, lon=lon_ahead, level="deep", score=9.0)]))
     r = c.get("/api/v1/drive/ahead", {"lat": LAT, "lon": LON, "heading": 90, "dist": 300})
     a = r.json()["ahead"]
     assert len(a) == 1 and 140 <= a[0]["distance_m"] <= 160 and a[0]["side"] == "center"
@@ -137,7 +137,7 @@ def test_drive_ahead(c):
 
 @pytest.mark.django_db
 def test_map_clusters_bbox(c):
-    post_trip(c, register(c), trip([ev(10)]))
+    post_trip(c, register(c), trip([ev(10, level="deep", score=9.0)]))
     r = c.get("/api/v1/map/clusters", {"bbox": f"{LAT-0.01},{LON-0.01},{LAT+0.01},{LON+0.01}"})
     assert len(r.json()["clusters"]) == 1
     assert c.get("/api/v1/map/clusters", {"bbox": "0,0,1,1"}).json()["clusters"] == []
@@ -192,3 +192,42 @@ def test_admin_endpoints_need_staff(c, django_user_model):
     django_user_model.objects.create_user("a", password="x", is_staff=True)
     c.login(username="a", password="x")
     assert "current" in c.get("/api/v1/admin/brain/summary").json()
+
+
+@pytest.mark.django_db
+def test_light_and_mid_potholes_are_quality_not_elements(c):
+    """Мелкие и средние ямы — качество дороги: на карте и в предупреждениях их нет, а глубокие и лежачие есть."""
+    import math
+    tok = register(c)
+    post_trip(c, tok, trip([ev(10, level="light", score=2.8), ev(20, lat=LAT + 0.001, level="mid"), ev(30, lat=LAT + 0.002, level="deep", score=9.0),
+                            ev(40, lat=LAT + 0.003, type="bump", level="mid")]))
+    bbox = f"{LAT - 0.01},{LON - 0.01},{LAT + 0.01},{LON + 0.01}"
+    els = c.get("/api/v1/map/clusters", {"bbox": bbox}).json()["clusters"]
+    assert sorted(x["type"] + ":" + x["level"] for x in els) == ["bump:mid", "pothole:deep"]
+    assert all(x["element"] for x in els)
+    allc = c.get("/api/v1/map/clusters", {"bbox": bbox, "all": 1}).json()["clusters"]
+    assert len(allc) == 4 and sum(1 for x in allc if x["element"]) == 2
+    bump = next(x for x in els if x["type"] == "bump")
+    assert bump["span"] == "full" and bump["advice"] == "slow"           # лежачий на всю ширину: перестроиться бесполезно
+
+
+def test_lane_summary_and_advice():
+    from brain import lane
+    s = lane.summarize([1.9, 2.4, 2.1, 2.2])
+    assert s["side"] == "right" and s["n"] == 4 and s["confidence"] > 0.6
+    assert lane.summarize([-2.0, -2.6, -2.2])["side"] == "left"
+    assert lane.summarize([0.2, -0.3, 0.1])["side"] == "center"
+    assert lane.summarize([2.0])["side"] == "unknown"                    # один проезд — сторону не определяем
+    assert lane.describe("bump", "mid", s)["advice"] == "slow"           # лежачий — на всю ширину
+    assert lane.describe("pothole", "deep", s) == dict(span="lane", side="right", advice="avoid")
+    assert lane.describe("pothole", "deep", {"side": "right", "confidence": 0.2})["advice"] == "slow"   # мало данных — только снизить скорость
+
+
+def test_taxonomy_elements_vs_quality():
+    from brain import taxonomy
+    assert not taxonomy.is_element("pothole", "light") and not taxonomy.is_element("pothole", "mid")
+    assert taxonomy.is_element("pothole", "deep") and taxonomy.is_element("pothole", "danger")
+    assert taxonomy.is_element("bump", "light") and taxonomy.is_element("rail_tram", "mid")
+    assert not taxonomy.is_element("rough_patch", "mid")                  # гребёнка — участок, не точка
+    kinds = {i["key"]: i["kind"] for i in taxonomy.as_json()["items"]}
+    assert kinds["pothole_mid"] == "quality" and kinds["pothole_deep"] == "element" and kinds["noise"] == "none"

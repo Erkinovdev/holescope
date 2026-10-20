@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from brain import lane, taxonomy
 from brain.models import AlgoVersion, AuditLog, Label, Question
 from fleet.models import CarModel, Device, Vehicle
 from roadnet.matching import get_index
@@ -109,7 +110,8 @@ def cluster_json(c: EventCluster) -> dict:
                 quiet_passes=c.quiet_passes, confidence=round(c.confidence, 3), score_median=round(c.score_median, 2), safe_speed=c.safe_speed_kmh,
                 first_seen=iso(c.first_seen), last_hit=iso(c.last_hit), fixed_at=iso(c.fixed_at),
                 street=seg.road.name_ru if seg and seg.road.named else None, road=seg.road.code if seg else None, segment=seg.code if seg else None,
-                district=seg.district.name_ru if seg and seg.district else None)
+                district=seg.district.name_ru if seg and seg.district else None,
+                element=taxonomy.is_element(c.type, c.level), lane=c.lane or {}, **{k: v for k, v in lane.describe(c.type, c.level, c.lane).items()})
 
 
 @role_required("analyst")
@@ -124,6 +126,10 @@ def clusters_list(request):
         qs = qs.filter(level__in=g["level"].split(","))
     if g.get("district"):
         qs = qs.filter(segment__district__code=g["district"])
+    if g.get("kind") in ("element", "quality"):            # element — только элементы (точки), quality — то, что уходит в качество дороги
+        want = g["kind"] == "element"
+        ids = [i for i, t, l in qs.values_list("pk", "type", "level") if taxonomy.is_element(t, l) == want]
+        qs = qs.filter(pk__in=ids)
     if g.get("q"):
         qs = qs.filter(segment__road__name_key__contains=g["q"].lower())
     if g.get("min_passes"):

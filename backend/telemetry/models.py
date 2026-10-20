@@ -65,6 +65,7 @@ class EventCluster(models.Model):
     last_hit = models.DateTimeField(null=True, blank=True)          # время последнего удара (не любое сохранение)
     fixed_at = models.DateTimeField(null=True, blank=True)
     type_votes = models.JSONField(default=dict, blank=True)         # голоса водителей по типу: {manhole: 3, pothole_light: 1}
+    lane = models.JSONField(default=dict, blank=True)               # сторона/полоса по поперечным смещениям проездов: {n, median_m, spread_m, side, confidence}
 
     class Meta:
         indexes = [models.Index(fields=["lat", "lon"]), models.Index(fields=["status"])]

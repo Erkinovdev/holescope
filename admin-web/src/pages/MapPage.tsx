@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ClusterPanel from '../components/ClusterPanel'
-import MapView, { type MapLayers } from '../components/MapView'
+import MapView, { type ClusterKind, type MapLayers } from '../components/MapView'
 import { Button, Card, Chip, Field, Input, PageHeader, cx } from '../components/ui'
 import { api } from '../lib/api'
 import { ROUGH_COLORS, STATUS_NAMES } from '../lib/format'
@@ -10,7 +10,8 @@ interface Hit { type: string; code: string; name: string; lat: number; lon: numb
 const STATUSES = ['candidate', 'confirmed', 'complaint', 'fixed']
 
 export default function MapPage() {
-  const [layers, setLayers] = useState<MapLayers>({ roads: true, roughness: true, clusters: true })
+  const [layers, setLayers] = useState<MapLayers>({ roads: false, roughness: true, clusters: true, stretches: true })
+  const [kind, setKind] = useState<ClusterKind>('element')
   const [statuses, setStatuses] = useState<string[]>(['candidate', 'confirmed', 'complaint'])
   const [sel, setSel] = useState<number | null>(null)
   const [fly, setFly] = useState<{ lon: number; lat: number; zoom?: number; n: number } | null>(null)
@@ -33,7 +34,7 @@ export default function MapPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title="Карта" sub={stats.data ? `${stats.data.total} ям в базе` : undefined} />
+      <PageHeader title="Карта" sub={stats.data ? `${stats.data.total} мест в базе · элементы — точки на дороге, качество — участки` : undefined} />
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[250px_1fr_360px]">
         <Card className="flex flex-col gap-4 overflow-auto">
           <form onSubmit={(e) => { e.preventDefault(); void search() }} className="flex flex-col gap-2">
@@ -46,10 +47,19 @@ export default function MapPage() {
           </form>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-semibold">Слои</legend>
-            {([['clusters', 'Ямы'], ['roughness', 'Ровность A–E'], ['roads', 'Дорожная сеть']] as [keyof MapLayers, string][]).map(([k, l]) => (
-              <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={layers[k]} onChange={() => toggle(k)} className="h-4 w-4 accent-[var(--amber)]" />{l}</label>
+            {([['clusters', 'Элементы и ямы'], ['stretches', 'Плохие участки (D/E)'], ['roughness', 'Ровность A–E по сегментам'], ['roads', 'Все дороги серым']] as [keyof MapLayers, string][]).map(([k, l]) => (
+              <label key={k} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!layers[k]} onChange={() => toggle(k)} className="h-4 w-4 accent-[var(--amber)]" />{l}</label>
             ))}
-            <label className="flex items-center gap-2 text-sm text-muted"><input type="checkbox" disabled className="h-4 w-4" />Махалли (нет данных, TODO)</label>
+          </fieldset>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-semibold">Что показывать точками</legend>
+            <div className="flex flex-wrap gap-2">
+              {([['element', 'Элементы'], ['quality', 'Мелкие и средние ямы'], ['all', 'Всё']] as [ClusterKind, string][]).map(([k, l]) => (
+                <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}
+                  className={cx('rounded-full border px-3 py-1 text-xs font-medium', kind === k ? 'border-amber bg-amber-dim text-amber-text' : 'border-line text-muted')}>{l}</button>
+              ))}
+            </div>
+            <p className="text-xs text-muted">Элемент — глубокая или опасная яма, лежачий, люк с перепадом, рельсы. Мелкие и средние ямы входят в качество дороги.</p>
           </fieldset>
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-semibold">Статусы ям</legend>
@@ -67,7 +77,7 @@ export default function MapPage() {
           </div>
         </Card>
         <Card pad={false} className="min-h-[420px] overflow-hidden">
-          <MapView layers={layers} statuses={statuses} onSelect={(c) => setSel(c.id)} selectedId={sel} flyTo={fly} />
+          <MapView layers={layers} statuses={statuses} kind={kind} onSelect={(c) => setSel(c.id)} selectedId={sel} flyTo={fly} />
         </Card>
         <Card className="overflow-auto">
           {sel ? <ClusterPanel id={sel} onChanged={() => undefined} /> : <p className="text-sm text-muted">Выберите яму на карте — здесь появятся детали и действия модерации.</p>}

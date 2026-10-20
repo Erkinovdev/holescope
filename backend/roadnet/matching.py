@@ -21,6 +21,7 @@ class Match:
     distance_m: float
     frac: float            # положение вдоль сегмента 0..1
     heading_diff: float | None
+    xtrack_m: float = 0.0  # поперечное смещение точки от оси сегмента: «+» — справа по ходу сегмента, «−» — слева
 
 
 class SegmentIndex:
@@ -70,7 +71,10 @@ class SegmentIndex:
             return None
         score = np.where(ok, d + (0 if hd is None else np.nan_to_num(hd) * 0.05), np.inf)
         k = int(np.argmin(score))
-        return Match(int(self.id[ix[k]]), float(d[k]), float(t[k]), None if hd is None or np.isnan(hd[k]) else float(hd[k]))
+        # знак: векторное произведение направления сегмента на вектор «начало → точка» (начало координат); «+» слева → меняем на «+» справа
+        seg_len = math.sqrt(float(L2[k]))
+        left = (dx[k] * (-ay[k]) - dy[k] * (-ax[k])) / max(seg_len, 1e-6)
+        return Match(int(self.id[ix[k]]), float(d[k]), float(t[k]), None if hd is None or np.isnan(hd[k]) else float(hd[k]), xtrack_m=float(-left))
 
 
 _lock = threading.Lock()

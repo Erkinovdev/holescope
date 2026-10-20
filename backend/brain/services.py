@@ -11,7 +11,7 @@ from roadnet.geo import bearing
 from roadnet.matching import get_index
 from roadnet.models import Segment
 from telemetry.models import EventCluster, RoadEvent, SegmentScore, Trip
-from . import guesser, inference, road_stats, validation
+from . import guesser, inference, lane, road_stats, validation
 from .active_learning import create_questions_for_trip
 
 
@@ -70,6 +70,13 @@ def attach_to_cluster(ev: RoadEvent) -> EventCluster:
         best.status = "confirmed"
     best.save()
     return best
+
+
+def refresh_lane(cluster: EventCluster) -> None:
+    """Пересчитывает сторону/полосу кластера по поперечным смещениям всех его проездов."""
+    xs = [f.get("xtrack_m") for f in cluster.events.values_list("features", flat=True) if isinstance(f, dict)]
+    cluster.lane = lane.summarize([x for x in xs if isinstance(x, (int, float))])
+    EventCluster.objects.filter(pk=cluster.pk).update(lane=cluster.lane)
 
 
 def _parse_started(payload: dict):
@@ -131,10 +138,14 @@ def ingest_trip(device: Device, payload: dict, validate: bool = True) -> Trip:
             ev.guess = guesser.guess_for_event(ev, guess_params)
             ev.save(update_fields=["cluster", "guess"])
             touched_clusters.add(ev.cluster_id)
-            if ev.cluster.segment_id is None and idx is not None:
+            if idx is not None:
                 m = idx.snap(ev.lat, ev.lon, hd)
                 if m:
-                    EventCluster.objects.filter(pk=ev.cluster_id).update(segment_id=m.segment_id)
+                    if ev.cluster.segment_id is None:
+                        EventCluster.objects.filter(pk=ev.cluster_id).update(segment_id=m.segment_id)
+                    ev.features = {**ev.features, "xtrack_m": round(m.xtrack_m, 2)}
+                    ev.save(update_fields=["features"])
+                    refresh_lane(ev.cluster)
     seg_rows = []
     for s in segments if use_map else []:
         at = started + timedelta(seconds=s.get("t0", 0))
