@@ -121,12 +121,24 @@ class DriveScreen extends ConsumerStatefulWidget {
   ConsumerState<DriveScreen> createState() => _DriveScreenState();
 }
 
-class _DriveScreenState extends ConsumerState<DriveScreen> {
+class _DriveScreenState extends ConsumerState<DriveScreen> with WidgetsBindingObserver {
   final map = RoadMapController();
   bool centered = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) ref.invalidate(permStateProvider); // вернулись из настроек
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     map.dispose();
     super.dispose();
   }
@@ -142,6 +154,7 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
     final armed = s.phase == RecorderPhase.armed;
     final status = driving ? l.driveRecording : (armed ? l.driveDetecting : (s.phase == RecorderPhase.idle ? l.manualStartHint : l.driveIdle));
     final queue = ref.watch(queueSizeProvider);
+    final noLoc = ref.watch(permStateProvider).value?.location == false;
     if (s.lat != null && s.lon != null) {
       map.setMe(s.lat, s.lon, s.heading);
       if (!centered || driving) {
@@ -178,7 +191,16 @@ class _DriveScreenState extends ConsumerState<DriveScreen> {
                     ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: (1 - warn.distanceM / 150).clamp(0.05, 1.0), minHeight: 5, color: c.crater, backgroundColor: c.crater.withValues(alpha: 0.18))),
                   ]),
                 )
-              : Align(
+              : noLoc
+                  ? Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: c.line)),
+                      child: Column(spacing: 10, children: [
+                        Text(l.permDenied, textAlign: TextAlign.center, style: HpText.s(c.craterText, 14, FontWeight.w500, h: 20 / 14)),
+                        HpButton(l.openSettings, kind: HpButtonKind.secondary, onPressed: () => ref.read(permissionServiceProvider).openSettings()),
+                      ]),
+                    )
+                  : Align(
                   alignment: Alignment.centerLeft,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),

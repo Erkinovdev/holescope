@@ -31,7 +31,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get permLead =>
-      'Datchiklar va geolokatsiyaga ruxsat bering — telefon chuqurni sezadi, siz esa uni xaritada ko‘rasiz.';
+      'Harakat datchiklari va geolokatsiya telefon chuqurni sezishi, siz esa uni xaritada ko‘rishingiz va safar marshrutini yozishingiz uchun kerak.';
 
   @override
   String get permMotionTitle => 'Harakat va yo‘nalish';
@@ -52,7 +52,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get permNotifSub => 'Faqat chuqurlar haqida ogohlantirish';
 
   @override
-  String get permCta => 'Ruxsat berish va boshlash';
+  String get permCta => 'Davom etish';
 
   @override
   String get driveRecording => 'Yozish ketmoqda · ekranni qulflash mumkin';
@@ -504,7 +504,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get permDenied =>
-      'Bu ruxsatsiz yozib bo‘lmaydi. Sozlamalarni ochib, ruxsat bering.';
+      'Bu funksiya uchun geolokatsiya kerak. Uni ilova sozlamalarida yoqish mumkin.';
 
   @override
   String get openSettings => 'Sozlamalarni ochish';
@@ -750,7 +750,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get vcMicNo => 'Ruxsat yo‘q';
 
   @override
-  String get vcAllow => 'Ruxsat berish';
+  String get vcAllow => 'Davom etish';
 
   @override
   String get vcSpeech => 'Telefonda aniqlash';

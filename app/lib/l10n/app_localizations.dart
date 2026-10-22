@@ -143,7 +143,7 @@ abstract class AppLocalizations {
   /// No description provided for @permLead.
   ///
   /// In ru, this message translates to:
-  /// **'Разрешите датчики и геолокацию — так телефон почувствует яму, а вы увидите её на карте.'**
+  /// **'Датчики движения и геолокация нужны, чтобы телефон почувствовал яму, а вы увидели её на карте и записали маршрут поездки.'**
   String get permLead;
 
   /// No description provided for @permMotionTitle.
@@ -185,7 +185,7 @@ abstract class AppLocalizations {
   /// No description provided for @permCta.
   ///
   /// In ru, this message translates to:
-  /// **'Разрешить и начать'**
+  /// **'Продолжить'**
   String get permCta;
 
   /// No description provided for @driveRecording.
@@ -1019,7 +1019,7 @@ abstract class AppLocalizations {
   /// No description provided for @permDenied.
   ///
   /// In ru, this message translates to:
-  /// **'Без этого разрешения запись невозможна. Откройте настройки и разрешите доступ.'**
+  /// **'Для этой функции нужна геолокация. Её можно включить в настройках приложения.'**
   String get permDenied;
 
   /// No description provided for @openSettings.
@@ -1463,7 +1463,7 @@ abstract class AppLocalizations {
   /// No description provided for @vcAllow.
   ///
   /// In ru, this message translates to:
-  /// **'Разрешить'**
+  /// **'Продолжить'**
   String get vcAllow;
 
   /// No description provided for @vcSpeech.

@@ -31,7 +31,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get permLead =>
-      'Разрешите датчики и геолокацию — так телефон почувствует яму, а вы увидите её на карте.';
+      'Датчики движения и геолокация нужны, чтобы телефон почувствовал яму, а вы увидели её на карте и записали маршрут поездки.';
 
   @override
   String get permMotionTitle => 'Движение и ориентация';
@@ -52,7 +52,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get permNotifSub => 'Только предупреждения о ямах';
 
   @override
-  String get permCta => 'Разрешить и начать';
+  String get permCta => 'Продолжить';
 
   @override
   String get driveRecording => 'Запись идёт · экран можно заблокировать';
@@ -527,7 +527,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get permDenied =>
-      'Без этого разрешения запись невозможна. Откройте настройки и разрешите доступ.';
+      'Для этой функции нужна геолокация. Её можно включить в настройках приложения.';
 
   @override
   String get openSettings => 'Открыть настройки';
@@ -780,7 +780,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get vcMicNo => 'Нет доступа';
 
   @override
-  String get vcAllow => 'Разрешить';
+  String get vcAllow => 'Продолжить';
 
   @override
   String get vcSpeech => 'Распознавание на телефоне';

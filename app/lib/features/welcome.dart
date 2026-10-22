@@ -369,24 +369,23 @@ class PermissionStep extends ConsumerStatefulWidget {
 
 class _PermissionStepState extends ConsumerState<PermissionStep> {
   bool busy = false;
-  bool denied = false;
-  bool permanent = false;
 
   String get _next => widget.location ? '/onboarding/motion' : '/onboarding/mount';
 
+  /// Экран-объяснение пропустить нельзя: «Продолжить» сразу вызывает системный запрос, затем идём дальше при любом ответе.
+  /// Если доступ отклонён, нужные экраны (поездка) сами покажут подсказку со ссылкой в настройки.
   Future<void> _ask() async {
     setState(() => busy = true);
     final svc = ref.read(permissionServiceProvider);
-    final r = widget.location ? await svc.requestLocation() : await svc.requestMotion();
+    if (widget.location) {
+      await svc.requestLocation();
+    } else {
+      await svc.requestMotion();
+    }
     if (!mounted) return;
     ref.invalidate(permStateProvider);
-    final ok = widget.location ? r.location : (r.motion || r.notifications);
-    setState(() {
-      busy = false;
-      denied = !ok;
-      permanent = r.permanentlyDenied;
-    });
-    if (ok) context.go(_next);
+    setState(() => busy = false);
+    context.go(_next);
   }
 
   @override
@@ -397,7 +396,9 @@ class _PermissionStepState extends ConsumerState<PermissionStep> {
     final bullets = loc
         ? [context.tr('Автостарт, когда вы поехали', 'Siz yoʻlga chiqqaningizda avtomatik boshlanadi'), context.tr('Точное место ямы с точностью ±3 м', 'Choʻqqining aniq joyi ±3 m aniqlikda'), context.tr('Координаты не привязаны к вашему имени', 'Koordinatalar ismingizga bogʻlanmagan')]
         : [context.tr('Данные уходят на сервер без номера телефона', 'Maʼlumotlar telefon raqamisiz serverga yuboriladi'), context.tr('Пешком и в автобусе запись отключается', 'Piyoda va avtobusda yozuv oʻchadi'), context.tr('Фоновая запись экономит батарею', 'Fon rejimi batareyani tejaydi')];
-    return OnbFrame(
+    return PopScope(
+      canPop: false,
+      child: OnbFrame(
       top: 60,
       children: [
         Center(
@@ -409,22 +410,20 @@ class _PermissionStepState extends ConsumerState<PermissionStep> {
           ),
         ),
         const SizedBox(height: 14),
-        Text(loc ? context.tr('Геолокация «всегда»', 'Geolokatsiya «doim»') : context.tr('Датчики движения', 'Harakat datchiklari'), style: HpText.s(c.text, 28, FontWeight.w700, ls: -0.4)),
+        Text(loc ? context.tr('Геолокация', 'Geolokatsiya') : context.tr('Датчики движения', 'Harakat datchiklari'), style: HpText.s(c.text, 28, FontWeight.w700, ls: -0.4)),
         Text(
           loc
-              ? context.tr('Чтобы поездка записывалась сама, пока телефон в кармане или на сиденье.', 'Telefon cho‘ntakda yoki o‘rindiqda bo‘lganda safar o‘zi yozilishi uchun.')
-              : context.tr('Читаем акселерометр и гироскоп только во время поездки на автомобиле.', 'Akselerometr va giroskopni faqat avtomobilda ketayotganda oʻqiymiz.'),
+              ? context.tr('Геолокация нужна, чтобы показывать карту ям рядом с вами и записывать маршрут поездки, в том числе в фоне, пока телефон в кармане или на сиденье. Следующим шагом iOS покажет системный запрос.', 'Geolokatsiya yoningizdagi choʻqqilar xaritasini koʻrsatish va safar marshrutini yozish uchun kerak, jumladan telefon cho‘ntakda yoki o‘rindiqda bo‘lganda fonda ham. Keyingi qadamda iOS tizim soʻrovini koʻrsatadi.')
+              : context.tr('Акселерометр и гироскоп читаем только во время поездки на автомобиле. Уведомления нужны для предупреждений о ямах. Следующим шагом iOS покажет системные запросы.', 'Akselerometr va giroskopni faqat avtomobilda ketayotganda oʻqiymiz. Bildirishnomalar chuqurlar haqida ogohlantirish uchun kerak. Keyingi qadamda iOS tizim soʻrovlarini koʻrsatadi.'),
           style: HpText.s(c.muted, 14, FontWeight.w400, h: 1.4),
         ),
         const SizedBox(height: 6),
         for (final b in bullets) Row(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [Icon(Icons.check_rounded, size: 18, color: c.smoothText), Expanded(child: Text(b, style: HpText.s(c.text, 13, FontWeight.w500, h: 1.35)))]),
-        if (denied) Text(permanent ? context.tr('Доступ закрыт в системе. Откройте настройки приложения.', 'Ruxsat tizimda yopilgan. Ilova sozlamalarini oching.') : context.tr('Без этого запись не заработает. Можно разрешить позже в настройках.', 'Busiz yozuv ishlamaydi. Keyinroq sozlamalardan ruxsat berish mumkin.'), style: HpText.s(c.craterText, 13, FontWeight.w500)),
       ],
       buttons: [
-        if (denied && permanent) HpButton(context.tr('Открыть настройки', 'Sozlamalarni ochish'), kind: HpButtonKind.secondary, onPressed: () => ref.read(permissionServiceProvider).openSettings()),
-        HpButton(loc ? context.tr('Разрешить', 'Ruxsat berish') : context.tr('Разрешить датчики', 'Datchiklarga ruxsat'), loading: busy, onPressed: busy ? null : _ask),
-        HpButton(context.tr('Позже', 'Keyinroq'), kind: HpButtonKind.secondary, onPressed: () => context.go(_next)),
+        HpButton(context.tr('Продолжить', 'Davom etish'), loading: busy, onPressed: busy ? null : _ask),
       ],
+      ),
     );
   }
 }
